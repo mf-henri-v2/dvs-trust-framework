@@ -56,16 +56,26 @@ test("leaves external links alone", () => {
   assert.match(html, /href="https:\/\/www\.gov\.uk\/"/);
 });
 
-test("renders GovSpeak row headers as th cells without the marker", () => {
-  const html = render("## T\n\n| STANDARD |\n| --- |\n| # Rules for identity service providers |\n| A standard |\n");
+test("renders bold cells in a single-column table as row headers", () => {
+  const html = render("## T\n\n| STANDARD |\n| --- |\n| **Rules for identity service providers** |\n| A standard |\n");
   assert.match(html, /<th scope="row" class="govuk-table__header">Rules for identity service providers<\/th>/);
-  assert.equal(html.includes("# Rules"), false);
+  assert.match(html, /<td class="govuk-table__cell">A standard<\/td>/);
 });
 
-test("applies abbreviation definitions and hides them", () => {
-  const html = render("## T\n\nA DVS is a service.\n\n*[DVS]: Digital Verification Service\n");
+test("leaves bold cells alone in tables with more than one column", () => {
+  const html = render("## T\n\n| A | B |\n| --- | --- |\n| **Bold** | text |\n");
+  assert.equal(html.includes('scope="row"'), false);
+});
+
+test("uses the abbreviation definitions kept in a hidden comment", () => {
+  const source =
+    "## T\n\nA DVS is a service.\n\n" +
+    "<!-- Abbreviation definitions from the GOV.UK publication source. Not displayed on GitHub.\n" +
+    "*[DVS]: Digital Verification Service\n-->\n";
+  const html = render(source);
   assert.match(html, /<abbr title="Digital Verification Service">DVS<\/abbr>/);
   assert.equal(html.includes("*[DVS]"), false);
+  assert.equal(html.includes("Abbreviation definitions"), false);
 });
 
 test("does not wrap an invisible anchor in an empty paragraph", () => {
