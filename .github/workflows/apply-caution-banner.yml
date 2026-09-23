@@ -1,0 +1,52 @@
+name: Apply caution banner
+
+# For maintainers who work in the browser. After you change
+# tools/caution-banner.md on a branch, run this workflow on that branch.
+# It applies the new wording to every applicable Markdown file, commits
+# the result to the same branch, and runs the repository checks again.
+# Review the changes in the branch's pull request as usual.
+#
+# Only people with write access can run a workflow manually. It refuses to
+# run on main.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    name: Apply banner to this branch
+    if: github.ref_name != github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # to commit the updated files to this branch
+      actions: write # to start the repository checks on the new commit
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Apply tools/caution-banner.md
+        run: python3 tools/caution_banner.py --apply
+
+      - name: Commit the changes to this branch
+        id: commit
+        run: |
+          if git diff --quiet; then
+            echo "Every file already carries the current banner. Nothing to commit."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --all --message "Apply caution banner wording from tools/caution-banner.md"
+          git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      # Commits pushed by this workflow do not trigger other workflows
+      # automatically, so start the checks on the new commit explicitly.
+      - name: Run the repository checks on the updated branch
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run checks.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
