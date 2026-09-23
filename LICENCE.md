@@ -8,7 +8,7 @@
 This repository is **dual-licensed**, following the [GDS Way guidance for repositories that are open documentation](https://gds-way.digital.cabinet-office.gov.uk/manuals/licensing.html):
 
 - the **documentation** (all Markdown and prose in this repository) is licensed under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)
-- any **code** (CI workflows, scripts or tooling under `.github/` or `supporting-material/`) is licensed under the MIT License
+- any **code** (the workflows, tools and site source under `.github/`, `tools/` and `docs-site/`) is licensed under the MIT License
 
 ## Documentation — Open Government Licence v3.0
 
@@ -48,8 +48,8 @@ THE SOFTWARE.
 
 ## British English note
 
-Following the [GDS Way language guidance](https://gds-way.digital.cabinet-office.gov.uk/manuals/licensing.html#language), this repository uses the British English spelling *licence* for the noun throughout, including in the filename [`LICENCE.md`](LICENCE.md). The name *MIT License* uses the US spelling because it is a proper name.
+Following the [GDS Way language guidance](https://gds-way.digital.cabinet-office.gov.uk/manuals/licensing.html#language), this repository uses the British English spelling *licence* for the noun throughout, including in the filename `LICENCE.md`. The name *MIT License* uses the US spelling because it is a proper name.
 
 ## Note on the authoritative publication
 
-The authoritative version of the UK digital verification services trust framework is the publication on GOV.UK. This repository is a workspace copy and is not the official statement of government policy.
+The authoritative version of the UK digital verification services trust framework is the [publication on GOV.UK](https://www.gov.uk/government/publications/uk-digital-verification-services-trust-framework-1-0). This repository holds OfDIA's working draft.

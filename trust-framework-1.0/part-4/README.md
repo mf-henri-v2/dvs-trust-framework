@@ -3,11 +3,12 @@
 > This is a working draft of the UK digital verification services trust framework, maintained for collaboration and review. It is not the formally published version and may differ from it. For the published trust framework, see [GOV.UK](https://www.gov.uk/government/publications/uk-digital-verification-services-trust-framework-1-0).
 <!-- caution-banner:end -->
 
-# Part 4 — Additional information
+# Part 4: Additional information
+<a id="part-4"></a>
 
 This folder contains the sections of the UK digital verification services trust framework that provide reference material supporting the rest of the publication: the table of standards, guidance and legislation, and the glossary of terms and definitions.
 
-These files mirror the official publication text for sections 15 and 16. For anything relying on the official policy, see the publication on GOV.UK.
+These sections are part of OfDIA's working draft. For the published version, see the [trust framework on GOV.UK](https://www.gov.uk/government/publications/uk-digital-verification-services-trust-framework-1-0).
 
 ## Sections in Part 4
 
@@ -16,5 +17,5 @@ These files mirror the official publication text for sections 15 and 16. For any
 
 ## Back
 
-- [Trust Framework 1.0 landing page](../README.md)
+- [Contents](../README.md)
 - [Repository home](../../README.md)

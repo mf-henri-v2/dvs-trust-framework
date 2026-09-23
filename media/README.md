@@ -5,34 +5,18 @@
 
 # Media
 
-This folder holds the images referenced from the publication files in this repository, plus a set of reserved filenames for future top-level banner illustrations.
+Images used by the trust framework text and by this repository.
 
-## In use
+## Figures in the trust framework
 
-- `ofdia-banner.png` — Office for Digital Identities and Attributes banner, used at the top of the repository README.
-  - Note: at the time of adding, the file is JPEG data carrying a `.png` extension. Most renderers handle this without issue; a future tidy-up could rename it to `.jpg` or re-export as a real PNG.
+| File | Used in | Shows |
+| --- | --- | --- |
+| `Image_2.svg` | [Section 4](../trust-framework-1.0/part-1/04-how-organisations-participate-in-the-trust-framework.md) | Figure 2: an illustrative example of market relationships between trust framework participants |
+| `Image_3.svg` | [Section 4](../trust-framework-1.0/part-1/04-how-organisations-participate-in-the-trust-framework.md) | Figure 3: a second illustrative example of market relationships between trust framework participants |
+| `Image_4.svg` | [Section 12](../trust-framework-1.0/part-3/12-service-requirements.md) | Figure 4: responsibilities flowing down from a certified provider to a relying party |
 
-## Publication figures
+These files come from the GOV.UK publication. Each is a raster image inside an SVG file, so it does not scale like a true vector image. The alt text for each figure is on the image link in the section file.
 
-The figures referenced from the publication source are in place as SVG files. They are JPEG images embedded inside SVG containers (from the source publication pipeline), which is why the file extension is `.svg` but the content is raster.
+## Repository images
 
-- `Image_2.svg` — section 4.3, first illustrative market relationships diagram
-- `Image_3.svg` — section 4.3, second illustrative market relationships diagram
-- `Image_4.svg` — section 12.9, flow-down of responsibilities to a relying party
-
-Alt text for these figures is carried on the Markdown image references in the relevant section files themselves. Longer-form text descriptions could be added as supporting material in a future accessibility pass.
-
-## Reserved filenames for future banner images
-
-The following filenames are reserved as empty placeholder files so that if additional top-level banner illustrations are added later, references in the repository can be wired up without any filename churn. They are not currently referenced from any Markdown file.
-
-- `uk-certifid-colour-background.png`
-- `versioned-documents-overview.png`
-- `standards-and-interoperability.png`
-- `uk-certifid-mark.png`
-
-Filenames must not be changed, renamed, lowercased or hyphenated. If any of these are no longer wanted, the corresponding placeholder file can be deleted.
-
-## Back
-
-- [Repository home](../README.md)
+- `ofdia-banner.jpg`: the Office for Digital Identities and Attributes banner at the top of the [repository home page](../README.md).
