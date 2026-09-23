@@ -79,6 +79,7 @@ The **Repository checks** workflow runs on every pull request and every change t
 | --- | --- | --- |
 | Caution banner present | Every applicable Markdown file starts with the current banner | Anything about the policy content |
 | Tooling tests | The tools in `tools/` behave as their tests describe | Anything about the policy content |
+| Internal links and anchors | Relative links and anchors in Markdown files resolve, and every issue form lists the same sections as the contents page | That external websites are reachable, or anything about the policy content |
 
 On a pull request, GitHub runs the workflows and tools as changed by that pull request. A passing check therefore does not show that the checks themselves were left intact. Review changes to `.github/` and `tools/` with that in mind.
 

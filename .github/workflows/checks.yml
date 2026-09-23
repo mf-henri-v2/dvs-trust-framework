@@ -36,3 +36,13 @@ jobs:
           persist-credentials: false
       - name: Run the tests for the repository's tools
         run: python3 -m unittest discover -s tools/tests -v
+
+  internal-links:
+    name: Internal links and anchors
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Check that relative links and anchors resolve, and issue forms list every section
+        run: python3 tools/check_links.py
