@@ -1,0 +1,44 @@
+name: "Broken link or navigation problem"
+description: "A link does not work or goes to the wrong place, or something is hard to find."
+labels: ["links-and-navigation", "triage"]
+body:
+  - type: dropdown
+    id: section
+    attributes:
+      label: "Which section is this about?"
+      options:
+        - "0. Version and certification validity notes"
+        - "1. Introduction"
+        - "2. Feedback received and updates"
+        - "3. Terms and definitions"
+        - "4. How organisations participate in the trust framework"
+        - "5. Rules for identity service providers"
+        - "6. Rules for attribute service providers"
+        - "7. Rules for holder service providers"
+        - "8. Rules for orchestration service providers"
+        - "9. Rules for component service providers"
+        - "10. Inclusivity, accessibility and service design"
+        - "11. Operational requirements"
+        - "12. Service requirements"
+        - "13. The register of digital identity and attribute services"
+        - "14. The UK CertifID trust mark"
+        - "15. Table of standards, guidance and legislation"
+        - "16. Glossary of terms and definitions"
+        - "Not about a specific section"
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: "Which link or page? (optional)"
+      description: "Paste the link, or describe where it is."
+  - type: textarea
+    id: problem
+    attributes:
+      label: "What is wrong?"
+      description: "For example, the link returns an error, goes to an out-of-date page, or you could not find what you were looking for."
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: "Issues are public. Do not include personal data, such as names, email addresses or details about individuals."

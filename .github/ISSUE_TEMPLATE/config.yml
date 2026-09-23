@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Discussion
-    url: https://github.com/ofdia-at-dsit/dvs-trust-framework/discussions
-    about: For open-ended questions or broader conversation, please use GitHub Discussions instead of an issue.
-  - name: GOV.UK publication
+  - name: Read the published trust framework on GOV.UK
     url: https://www.gov.uk/government/publications/uk-digital-verification-services-trust-framework-1-0
-    about: The authoritative version of the trust framework lives on GOV.UK. For formal policy queries, please use the contact routes there.
-  - name: Security issue
-    url: https://github.com/ofdia-at-dsit/dvs-trust-framework/blob/main/SECURITY.md
-    about: Please do not raise security issues in public. See SECURITY.md for how to report them.
+    about: GOV.UK holds the authoritative, published version of the trust framework.
+  - name: Report a security vulnerability
+    url: https://github.com/ofdia-uk/dvs-trust-framework/blob/main/SECURITY.md
+    about: Do not report security vulnerabilities in a public issue. Follow the security policy instead.
+  - name: Contact OfDIA without using GitHub
+    url: https://www.gov.uk/government/organisations/office-for-digital-identities-and-attributes
+    about: Use the contact details on the OfDIA page on GOV.UK.
