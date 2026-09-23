@@ -64,6 +64,7 @@
 | User | A person who uses digital verification services to prove something about themself. This can include people with delegated authority to act on behalf of somebody else, such as carers or parents. |
 | Verifiable credential | A specific kind of tamper-resistant credential that has been digitally signed to allow for its authorship to be cryptographically verified. |
 
+<!-- Abbreviation definitions from the GOV.UK publication source. GOV.UK uses them to explain abbreviations and does not display them, so they are kept here in a comment that GitHub does not display.
 *[DVS]: Digital Verification Service
 *[OfDIA]: Office for Digital Identities and Attributes
 *[DSIT]: Department for Science, Innovation and Technology
@@ -102,6 +103,7 @@
 *[DPIA]: Data Protection Impact Assessment
 *[APCER]: Attack Presentation Classification Error Rate
 *[BPCER]: Bona Fide Presentation Attack Classification Error Rate
+-->
 
 ---
 

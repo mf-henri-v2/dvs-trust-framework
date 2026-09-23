@@ -209,7 +209,7 @@
 <a id="example-1"></a>
 
 >
-> ##### Illustrative example 1
+> #### Illustrative example 1
 >
 > An employer is hiring a new employee and needs to conduct a right to work check. The employer would like to conduct the check digitally.
 >
