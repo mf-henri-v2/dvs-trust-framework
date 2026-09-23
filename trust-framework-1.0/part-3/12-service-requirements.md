@@ -712,7 +712,7 @@
 <a id="example-10"></a>
 
 >
-> ##### Illustrative example 10
+> #### Illustrative example 10
 >
 > Victoria is shopping in a clothes shop and decides to create a digital identity with the shop’s chosen identity service provider so she can participate in a new digital shopping experience.
 >

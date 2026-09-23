@@ -18,7 +18,7 @@
 <a id="example-2"></a>
 
 >
-> ##### Illustrative example 2
+> #### Illustrative example 2
 >
 > George is travelling on holiday abroad with her three-year-old child. She holds both of their digital boarding passes, issued by the airline, as attributes in her preferred digital wallet app.
 >
@@ -42,7 +42,7 @@
 <a id="example-3"></a>
 
 >
-> ##### Illustrative example 3
+> #### Illustrative example 3
 >
 > Gabrielle is trying to prove she is a registered university student to access a student-only discount at a bookstore. She stores a digital identity in a holder service app. The identity includes attributes derived from authoritative university data by a registered attribute service and the app is protected by an appropriate form of biometric authentication.
 >
@@ -64,7 +64,7 @@
 <a id="example-4"></a>
 
 >
-> ##### Illustrative example 4
+> #### Illustrative example 4
 >
 > Hayley has already had her identity checked to a medium level of confidence with a high street bank to sign up to their online banking app.
 >
@@ -76,7 +76,7 @@
 <a id="example-5"></a>
 
 >
-> ##### Illustrative example 5
+> #### Illustrative example 5
 >
 > In the future, Patrick may be able to store a Qualified Certificate (QC) in a holder service. A qualified trust service provider (QTSP) will have bound his verified identity to this QC. Patrick could then present this QC from his holder service, allowing a relying party to validate his e-Signature.
 >
