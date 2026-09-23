@@ -143,9 +143,14 @@ def classify(raw: bytes, banner: list[str]) -> Result:
     ends_with_newline = text.endswith(nl)
     lines = (text[: -len(nl)] if ends_with_newline else text).split(nl)
 
-    starts = [i for i, line in enumerate(lines) if line == START]
-    ends = [i for i, line in enumerate(lines) if line == END]
-    stray = [i for i, line in enumerate(lines) if MARKER_LIKE.search(line) and i not in starts and i not in ends]
+    # Markers shown inside fenced code blocks are documentation, not markers.
+    prose = _outside_code_fences(lines)
+    starts = [i for i, line in enumerate(lines) if prose[i] and line == START]
+    ends = [i for i, line in enumerate(lines) if prose[i] and line == END]
+    stray = [
+        i for i, line in enumerate(lines)
+        if prose[i] and MARKER_LIKE.search(line) and i not in starts and i not in ends
+    ]
     if stray:
         return Result(REFUSED, f"line {stray[0] + 1} looks like a banner marker but does not match it exactly")
 
@@ -187,7 +192,6 @@ def classify(raw: bytes, banner: list[str]) -> Result:
         elif first.lstrip().startswith("<!--"):
             return Result(REFUSED, "file starts with an HTML comment that is not a banner marker")
         else:
-            prose = _outside_code_fences(lines)
             nearby = next(
                 (i for i, line in enumerate(lines[:LOOKAHEAD_LINES]) if prose[i] and ALERT.match(line)), None
             )

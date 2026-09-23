@@ -65,6 +65,11 @@ class CorrectFiles(BannerTestCase):
         self.assertEqual(classify(raw).status, cb.OK)
 
 
+    def test_markers_shown_inside_a_code_fence_are_documentation(self):
+        raw = doc(*MANAGED, "", "# How the banner works", "", "```markdown", *MANAGED, "```")
+        self.assertEqual(classify(raw).status, cb.OK)
+
+
 class SafeFixes(BannerTestCase):
     def test_hand_edited_wording_between_markers_is_replaced(self):
         raw = doc(cb.START, "> [!CAUTION]", "> Someone edited this by hand.", cb.END, "", "# Heading")
@@ -111,6 +116,10 @@ class SafeFixes(BannerTestCase):
 
     def test_banner_only_file_without_final_newline_gains_one(self):
         self.assertFixedTo(doc(*MANAGED, trailing=False), doc(*MANAGED))
+
+    def test_file_without_banner_but_with_documented_markers_gets_a_banner(self):
+        raw = doc("# How the banner works", "", "```", *MANAGED, "```")
+        self.assertFixedTo(raw, doc(*MANAGED, "", "# How the banner works", "", "```", *MANAGED, "```"))
 
     def test_empty_file_gets_the_banner(self):
         self.assertFixedTo(b"", doc(*MANAGED))
