@@ -10,9 +10,9 @@
 //   headings up a level so each page has one <h1> and no skipped levels;
 // - rewrites links between Markdown files to the site's page addresses;
 // - applies GOV.UK Frontend classes to the rendered HTML;
-// - turns Kramdown abbreviation definitions (*[DVS]: ...) into <abbr> titles,
-//   and GovSpeak row headers (cells starting "# ") into <th> cells, as the
-//   GOV.UK publication does.
+// - uses the abbreviation definitions kept in a hidden comment in section 16
+//   to explain abbreviations, and renders the bold row headings in the
+//   section 15 table as table row headers, as the GOV.UK publication does.
 
 import path from "node:path";
 import markdownIt from "markdown-it";
@@ -26,9 +26,18 @@ const REPO_FOOTER = /\r?\n(?:---|\*\*\*|___)\s*\r?\n+\*\*Repository navigation\*
 const BACK_SECTION = /\r?\n## Back\s*\r?\n[\s\S]*$/;
 const FIRST_HEADING = /^#{1,6}\s+(.+?)\s*#*\s*$/m;
 
-/** Remove repository-only furniture from a Markdown file before rendering. */
+// Section 16 keeps the GOV.UK abbreviation definitions (*[DVS]: ...) inside an
+// HTML comment so that GitHub does not display them. Uncomment them for the
+// site so that they explain abbreviations, as they do on GOV.UK.
+const ABBREVIATION_COMMENT = /^<!-- Abbreviation definitions from the GOV\.UK publication source\.[^\n]*\r?\n([\s\S]*?)\r?\n-->[ \t]*$/m;
+
+/** Prepare a Markdown file for rendering: remove repository-only material. */
 export function stripRepositoryFurniture(source) {
-  return source.replace(BANNER, "").replace(REPO_FOOTER, "\n").replace(BACK_SECTION, "\n");
+  return source
+    .replace(BANNER, "")
+    .replace(REPO_FOOTER, "\n")
+    .replace(BACK_SECTION, "\n")
+    .replace(ABBREVIATION_COMMENT, "$1");
 }
 
 /** The text of the first heading in a Markdown file, used as the page title. */
@@ -123,21 +132,34 @@ function bareAnchors(md) {
   });
 }
 
-// GovSpeak marks a table row header by starting the cell with "# " (section
-// 15 uses this). Render those cells as <th scope="row">, as GOV.UK does.
-function govspeakRowHeaders(md) {
-  md.core.ruler.push("govspeak_row_headers", (state) => {
+// Row headings in a single-column table are written as bold cells (the
+// section 15 table of standards). Render them as <th scope="row">, as GOV.UK
+// does. A cell counts only if its whole content is bold.
+function boldRowHeaders(md) {
+  md.core.ruler.push("bold_row_headers", (state) => {
     const tokens = state.tokens;
-    for (let i = 0; i + 2 < tokens.length; i++) {
-      const inline = tokens[i + 1];
-      if (tokens[i].type !== "td_open" || inline.type !== "inline" || !inline.content.startsWith("# ")) continue;
-      tokens[i].tag = "th";
-      tokens[i].attrSet("scope", "row");
-      tokens[i].meta = { ...(tokens[i].meta || {}), rowHeader: true };
+    let columns = 0;
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      if (token.type === "table_open") {
+        const firstRowEnd = tokens.findIndex((t, j) => j > i && t.type === "tr_close");
+        columns = tokens.slice(i, firstRowEnd).filter((t) => t.type === "th_open" || t.type === "td_open").length;
+        continue;
+      }
+      if (token.type !== "td_open" || columns !== 1) continue;
+      // Ignore whitespace-only text around the bold run.
+      const children = (tokens[i + 1]?.children ?? []).filter((c) => !(c.type === "text" && c.content.trim() === ""));
+      const whollyBold =
+        children.length >= 3 &&
+        children[0].type === "strong_open" &&
+        children.at(-1).type === "strong_close" &&
+        children.slice(1, -1).every((c) => c.type !== "strong_open" && c.type !== "strong_close");
+      if (!whollyBold) continue;
+      token.tag = "th";
+      token.attrSet("scope", "row");
+      token.meta = { ...(token.meta || {}), rowHeader: true };
       tokens[i + 2].tag = "th";
-      inline.content = inline.content.slice(2);
-      const first = inline.children?.find((child) => child.type === "text");
-      if (first) first.content = first.content.replace(/^# /, "");
+      tokens[i + 1].children = children.slice(1, -1);
     }
   });
 }
@@ -182,5 +204,5 @@ export const markdownLibrary = markdownIt({ html: true, linkify: false, typograp
   .use(markdownItAnchor, { slugify: githubSlug, tabIndex: false })
   .use(rewriteLinks)
   .use(bareAnchors)
-  .use(govspeakRowHeaders)
+  .use(boldRowHeaders)
   .use(govukClasses);

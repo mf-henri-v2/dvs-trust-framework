@@ -42,7 +42,9 @@ If you cannot tell whether a change alters meaning, treat it as a policy change.
 
 - Each numbered section is one Markdown file. Each part of the publication is a folder.
 - Invisible HTML anchors such as `<a id="section-12_4"></a>` keep the anchor IDs used on GOV.UK, so cross-references work. A reference to another file is a relative link to that file and anchor.
-- The example boxes in the GOV.UK publication are shown as quoted blocks.
+- The example boxes in the GOV.UK publication are shown as quoted blocks. The heading in each box is one level below the heading of the section it sits in.
+- The abbreviation definitions from the GOV.UK publication (`*[DVS]: Digital Verification Service`) are kept unchanged in an HTML comment at the end of section 16. GitHub does not display them. The reading site uses them to explain abbreviations, as GOV.UK does. Keep the comment, and add any new definition inside it.
+- The row headings in the section 15 table are bold cells. On GOV.UK and the reading site they are table row headers.
 - The navigation links at the end of each section file, below a horizontal rule, are repository material.
 - The text was converted from the GOV.UK publication once, when it was first imported. The conversion scripts were removed afterwards. They remain in the repository history at commit `4c41d4f`.
 

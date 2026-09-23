@@ -11,7 +11,7 @@ The site has no copy of the text. [Eleventy](https://www.11ty.dev/) renders the 
 - It removes each file's caution banner and "Repository navigation" footer. Every page shows a "Draft" status banner instead.
 - It uses the first heading as the page title, and keeps the other headings in order without skipping levels.
 - It points links between Markdown files at the matching site pages. Links to other repository files go to GitHub.
-- It renders two pieces of GOV.UK publishing syntax that the text still contains: abbreviation definitions (`*[DVS]: …`) and table row headers (cells starting `# `).
+- It uses the abbreviation definitions kept in a hidden comment in section 16 to explain abbreviations on hover. It renders the bold row headings in the section 15 table as table row headers. Both match GOV.UK.
 - It applies GOV.UK Frontend styles.
 
 The Markdown is never processed by a template engine, so nothing in the policy text can be interpreted as code.
