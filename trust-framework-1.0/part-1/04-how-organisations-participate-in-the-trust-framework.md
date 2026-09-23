@@ -44,9 +44,9 @@
 
 <sup>Figure 1</sup>
 
-4.1.c.  A service can perform more than one role concurrently and have this reflected on their certificate. Identity service provider, holder service provider and attribute service provider can all be performed concurrently and in any combination as part of one service. For example, a holder service that derives new attributes from the identity information it holds must seek certification as both a holder service provider and attribute service provider to be certified.
+4.1.c.  A service can perform more than one role concurrently and have this reflected on their certificate. Identity service provider, holder service provider, attribute service provider, and orchestration service provider can all be performed concurrently and in any combination as part of one service. For example, a holder service that derives new attributes from the identity information it holds must seek certification as both a holder service provider and attribute service provider to be certified.
 
-4.1.d. However, a single service cannot be certified under any other role if it is certified as an orchestration service or as a component service. For example, a provider who provides an identity service and also provides a part of this identity service to others as a component service must have their identity service and component service certified separately.
+4.1.d. However, a single service cannot be certified under any other role if it is certified as a component service. For example, a provider who provides an identity service and also provides a part of this identity service to others as a component service must have their identity service and component service certified separately.
 
 4.1.e. The rules for providers are outcome based. By following them, services will achieve certain goals. The rules do not require the use of specific technologies or processes, but direct services to follow open technical standards where possible to strengthen interoperability between participants. This means providers of certified services will be able to innovate and develop products and services to better support users, without being restricted to using certain technologies.
 
