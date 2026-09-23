@@ -1,8 +1,10 @@
 name: Build and deploy docs site
 
+# Manual only for now. The site does not build yet: its Eleventy configuration
+# was never committed, and GitHub Pages is not enabled. It ran on every push to
+# main and failed each time. It will build on pull requests and deploy from
+# main once the site is repaired.
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
 permissions:
