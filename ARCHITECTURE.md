@@ -36,7 +36,7 @@ If you cannot tell whether a change alters meaning, treat it as a policy change.
 | `media/` | Figures used by the text, and the OfDIA banner image |
 | `tools/` | The caution banner source and tools used by the checks, with their tests |
 | `.github/` | Issue forms, pull request template, code owners and workflows |
-| `docs-site/` | Source for a rendered reading version of the working draft (not yet deployed) |
+| `docs-site/` | Source for the [reading site](https://ofdia-uk.github.io/dvs-trust-framework/), built from the Markdown and published from `main` |
 
 ## How the text is structured
 
@@ -81,7 +81,17 @@ The **Repository checks** workflow runs on every pull request and every change t
 | Tooling tests | The tools in `tools/` behave as their tests describe | Anything about the policy content |
 | Internal links and anchors | Relative links and anchors in Markdown files resolve, and every issue form lists the same sections as the contents page | That external websites are reachable, or anything about the policy content |
 
+The **Reading site** workflow also runs on every pull request and every change to `main`:
+
+| Check | Confirms | Does not confirm |
+| --- | --- | --- |
+| Build and check the site | The site builds, its rendering tests pass, and every page has working internal links and anchors, ordered headings, image alt text and the draft banner | That the site is published, or anything about the policy content |
+
 On a pull request, GitHub runs the workflows and tools as changed by that pull request. A passing check therefore does not show that the checks themselves were left intact. Review changes to `.github/` and `tools/` with that in mind.
+
+## Reading site
+
+The [reading site](https://ofdia-uk.github.io/dvs-trust-framework/) shows the working draft to people who would rather not use GitHub. It renders the Markdown files directly and keeps no copy of the text. Changes to `main` are published automatically. Pull requests are built and checked but never published. The site is not part of GOV.UK, so it uses the GOV.UK Design System's Generic header and none of the GOV.UK branding. [`docs-site/README.md`](docs-site/README.md) explains how it works and how to run it.
 
 ## Issue labels
 
