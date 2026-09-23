@@ -1,35 +1,49 @@
+<!-- caution-banner:start (wording is kept in tools/caution-banner.md; edit it there) -->
 > [!CAUTION]
-> This repository is a workspace copy for navigation, drafting, version control and collaboration. It is not the official statement of government policy and must not be relied on as such. For the official published policy, see the [UK digital verification services trust framework 1.0 on GOV.UK](https://www.gov.uk/government/publications/uk-digital-verification-services-trust-framework-1-0/uk-digital-verification-services-trust-framework-1-0-pre-release).
+> This is a working draft of the UK digital verification services trust framework, maintained for collaboration and review. It is not the formally published version and may differ from it. For the published trust framework, see [GOV.UK](https://www.gov.uk/government/publications/uk-digital-verification-services-trust-framework-1-0).
+<!-- caution-banner:end -->
 
-# Versions
+# Versions and published baselines
 
-The UK digital verification services trust framework is revised iteratively. This repository is designed to host multiple versions side by side, each in its own top-level folder named `trust-framework-<major>.<minor>/`, so that readers can always reach a specific published version through a stable URL.
+This repository holds OfDIA's working draft of the UK digital verification services trust framework. Git tags record each version exactly as it was formally published, so you can always see what has changed since publication.
 
-## Currently hosted versions
+## How it works
 
-| Version | Status | Folder | Certification notes |
-| --- | --- | --- | --- |
-| 1.0 | Current | [`trust-framework-1.0/`](trust-framework-1.0/README.md) | See [`trust-framework-1.0/00-version-and-certification-validity-notes.md`](trust-framework-1.0/00-version-and-certification-validity-notes.md) |
+- **The `main` branch is the working draft.** It holds the text OfDIA has accepted through review. It can include changes that have not been published yet.
+- **A `published-X.Y` tag marks each formally published version.** A tag points at the version of the files that matched that publication, and never moves.
+- **GOV.UK is authoritative for the published version.** A change accepted into the working draft takes effect only when OfDIA publishes a new version on GOV.UK.
 
-Earlier published versions of the framework (for example the gamma (0.4) publication and the beta (0.3) publication) are not hosted in this repository at launch. They can be added later in the same pattern if there is demand — a `trust-framework-0.4/` folder following the same internal layout.
+The working draft is expected to differ from the latest published version once changes have been accepted. That difference is what the comparison below shows.
 
-## Adding a new version
+## Published versions
 
-When a new publication version (for example 1.1 or 2.0) is released on GOV.UK:
+| Tag | Published on GOV.UK | Notes |
+| --- | --- | --- |
+| [`published-1.0`](https://github.com/ofdia-uk/dvs-trust-framework/tree/published-1.0) | 9 June 2026 | [Trust framework 1.0](https://www.gov.uk/government/publications/uk-digital-verification-services-trust-framework-1-0), final publication. It replaced the pre-release published on 3 March 2026. |
 
-1. Create a new sibling folder `trust-framework-<major>.<minor>/`.
-2. Inside it, replicate the Part 1–4 structure used in [`trust-framework-1.0/`](trust-framework-1.0/README.md), with one Markdown file per main numbered section.
-3. Add the standard caution block to every file.
-4. Populate each file with the publication text exactly as published.
-5. Add a version README at `trust-framework-<major>.<minor>/README.md` following the same pattern as the 1.0 version README.
-6. Add a new row to the "Currently hosted versions" table above.
-7. Record the addition in [`CHANGELOG.md`](CHANGELOG.md) with a `[repo]` entry.
-8. If the new version supersedes an earlier one for new certifications, update the "Status" column of both rows in the table above.
+Earlier publications of the trust framework, such as gamma (0.4) and beta (0.3), are on GOV.UK. They are not held in this repository.
 
-## Relationship to supplementary codes
+## Compare the working draft with a published version
 
-Supplementary codes (for example for digital right to work, right to rent, or Disclosure and Barring Service identity checks) have their own version cycles and live in a separate [`supplementary-codes/`](supplementary-codes/README.md) folder when added.
+- On GitHub: [compare `published-1.0` with the working draft](https://github.com/ofdia-uk/dvs-trust-framework/compare/published-1.0...main). This shows every change since publication, file by file.
+- In a local copy of the repository:
 
-## Back
+  ```sh
+  git fetch --tags
+  git diff published-1.0 main -- trust-framework-1.0/
+  ```
 
-- [Repository home](README.md)
+## Where the text lives
+
+The sections are in [`trust-framework-1.0/`](trust-framework-1.0/README.md), one file per numbered section. The folder name records the version the working draft started from. Whether to rename it is decided when a new version is published.
+
+## When a new version is published
+
+1. Through a reviewed pull request, make sure `main` holds exactly the text published on GOV.UK.
+2. A maintainer tags that commit `published-X.Y` with an annotated tag, and adds a row to the table above.
+3. If the banner needs to point to the new publication, update [`tools/caution-banner.md`](tools/caution-banner.md) and apply it. [How this repository works](ARCHITECTURE.md#caution-banner) explains how.
+4. Optionally, create a GitHub release from the tag so the published version is easy to find.
+
+## How the text was first added
+
+The text was imported on 26 May 2026 from the 1.0 pre-release published on GOV.UK on 3 March 2026. It was then updated to match the final 1.0 publication of 9 June 2026, which changed sections 0, 2 and 4. The result was tagged `published-1.0`.

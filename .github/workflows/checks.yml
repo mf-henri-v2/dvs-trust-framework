@@ -1,0 +1,48 @@
+name: Repository checks
+
+# Read-only checks for every pull request and every change to main.
+# They run on all changes, with no path filters, so a required check never
+# waits indefinitely in a "Pending" state.
+#
+# These checks confirm repository structure only. They do not review,
+# approve or validate policy content.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  caution-banner:
+    name: Caution banner present
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Check every applicable Markdown file starts with the banner from tools/caution-banner.md
+        run: python3 tools/caution_banner.py --check
+
+  tooling-tests:
+    name: Tooling tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Run the tests for the repository's tools
+        run: python3 -m unittest discover -s tools/tests -v
+
+  internal-links:
+    name: Internal links and anchors
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Check that relative links and anchors resolve, and issue forms list every section
+        run: python3 tools/check_links.py

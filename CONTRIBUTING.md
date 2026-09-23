@@ -1,57 +1,53 @@
+<!-- caution-banner:start (wording is kept in tools/caution-banner.md; edit it there) -->
 > [!CAUTION]
-> This repository is a workspace copy for navigation, drafting, version control and collaboration. It is not the official statement of government policy and must not be relied on as such. For the official published policy, see the [UK digital verification services trust framework 1.0 on GOV.UK](https://www.gov.uk/government/publications/uk-digital-verification-services-trust-framework-1-0/uk-digital-verification-services-trust-framework-1-0-pre-release).
+> This is a working draft of the UK digital verification services trust framework, maintained for collaboration and review. It is not the formally published version and may differ from it. For the published trust framework, see [GOV.UK](https://www.gov.uk/government/publications/uk-digital-verification-services-trust-framework-1-0).
+<!-- caution-banner:end -->
 
-## Contributing
+# How to give feedback
 
-This repository provides a clearer and more structured way to give feedback on the UK digital verification services (DVS) trust framework.
+We welcome feedback on the UK digital verification services trust framework from anyone. That includes service providers, conformity assessment bodies, regulators, researchers, people who use digital identity services and members of the public.
 
-We welcome feedback from providers, regulators, researchers, assistive technology users, policy specialists, plain English reviewers and members of the public.
+This repository holds OfDIA's working draft. The authoritative version is the [published trust framework on GOV.UK](https://www.gov.uk/government/publications/uk-digital-verification-services-trust-framework-1-0).
 
->The version published on GOV.UK remains the authoritative version of the trust framework. Content in this repository does not replace it. A suggestion made or accepted here does not automatically become government policy. Changes to the trust framework follow the Office for Digital Identities and Attributes (OfDIA) publication and consultation processes.
+## Give feedback
 
-### How to provide feedback
+You need a free GitHub account. You do not need to know how GitHub works, and you do not need to suggest new wording.
 
-At this stage, we are accepting feedback through GitHub issues only. Please do not open a pull request.
+1. Find the section your feedback is about in the [trust framework](trust-framework-1.0/README.md). Note the rule or paragraph number, for example 12.4.1.c.
+2. [Open a new issue](https://github.com/ofdia-uk/dvs-trust-framework/issues/new/choose) and choose the option that fits best:
+   - **Policy feedback**: a rule does not work in practice, has unintended effects or conflicts with something else
+   - **Unclear wording**: you are not sure what something means
+   - **Correction**: a typo, a formatting problem or a factual error such as an out-of-date reference
+   - **Accessibility problem**: something is hard to read, navigate or use
+   - **Broken link or navigation problem**: a link does not work, or something is hard to find
+   - **Other suggestion**: anything else, such as an idea for guidance or examples
+3. Fill in the form and submit it.
 
-To give feedback, [open an issue](../../issues/new/choose) and select the template that best matches your point.
+Please keep each issue to one point where you can. Check the [open issues](https://github.com/ofdia-uk/dvs-trust-framework/issues) first, as someone may have raised the same point. You can add a comment to their issue instead.
 
-You can use an issue to:
+Do not include personal data in an issue. Issues are public.
 
-- report a typo or other correction
-- suggest a clarity or plain English improvement
-- identify a structural or navigation problem
-- report an accessibility issue
-- report a broken or out-of-date link
-- provide feedback on the policy
-- suggest supporting material
+## What happens next
 
-You do not need to propose a solution. Please give enough information for us to understand and consider the point, including a link to the relevant section where possible.
+1. OfDIA reads new feedback and labels it. We may ask you a question in the issue.
+2. If we decide a change is needed, we prepare it as a proposed change linked to your issue, so you can follow its progress.
+3. Feedback that would change what a rule means or how it applies is considered through OfDIA's policy process.
+4. Accepted changes become part of the working draft. They take effect only when OfDIA publishes a new version of the trust framework on GOV.UK.
 
-If none of the templates seems suitable, choose the closest match and explain your point in the issue.
+Raising an issue does not guarantee a change.
 
-### What happens to feedback
+## If you cannot use GitHub
 
-Repository maintainers will review issues and decide the appropriate next step.
+You can contact OfDIA using the details on the [OfDIA page on GOV.UK](https://www.gov.uk/government/organisations/office-for-digital-identities-and-attributes).
 
-Some corrections or improvements may be made in the repository. Feedback that could change the meaning or operation of the trust framework will be considered through OfDIA's policy, governance and publication processes.
+## Security
 
-Raising an issue does not guarantee that a change will be made to the repository or the trust framework.
+Do not report a security vulnerability in a public issue. Follow the [security policy](SECURITY.md).
 
-### Before raising an issue
+## Code of conduct
 
-- Check whether someone has already raised the same point.
-- Keep each issue focused on one point where possible.
-- Do not include personal data in examples, screenshots or logs.
-- Treat other contributors and repository maintainers with respect.
+Please be respectful to other contributors and to maintainers. We follow the [Contributor Covenant](https://www.contributor-covenant.org/) code of conduct.
 
-### Security
+## Licence
 
-Do not raise a public issue if you believe you have found a security vulnerability. Follow the process in [SECURITY.md](SECURITY.md).
-
-### Code of conduct
-
-Contributors are expected to follow the [Contributor Covenant](https://www.contributor-covenant.org/) version 2.1 or later.
-
-### Licence
-
-Feedback submitted to this repository will be handled under the terms set out in [LICENCE.md](LICENCE.md).
+Feedback you submit is handled under the terms in the [licence](LICENCE.md).

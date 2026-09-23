@@ -1,0 +1,69 @@
+name: "Policy feedback"
+description: "A rule does not work in practice, has unintended effects, or conflicts with something else."
+labels: ["policy-feedback", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: "Use this form for feedback about what a rule requires or how it applies. You do not need to suggest new wording.\n\nOfDIA considers policy feedback through its policy process. Raising an issue does not by itself change the trust framework."
+  - type: dropdown
+    id: section
+    attributes:
+      label: "Which section is this about?"
+      options:
+        - "0. Version and certification validity notes"
+        - "1. Introduction"
+        - "2. Feedback received and updates"
+        - "3. Terms and definitions"
+        - "4. How organisations participate in the trust framework"
+        - "5. Rules for identity service providers"
+        - "6. Rules for attribute service providers"
+        - "7. Rules for holder service providers"
+        - "8. Rules for orchestration service providers"
+        - "9. Rules for component service providers"
+        - "10. Inclusivity, accessibility and service design"
+        - "11. Operational requirements"
+        - "12. Service requirements"
+        - "13. The register of digital identity and attribute services"
+        - "14. The UK CertifID trust mark"
+        - "15. Table of standards, guidance and legislation"
+        - "16. Glossary of terms and definitions"
+        - "Not about a specific section"
+    validations:
+      required: true
+  - type: input
+    id: reference
+    attributes:
+      label: "Rule or paragraph number (optional)"
+      description: "If you know it. Rule numbers start with their section number."
+      placeholder: "For example, 12.4.1.c"
+  - type: textarea
+    id: feedback
+    attributes:
+      label: "What is your feedback?"
+      description: "Explain what does not work in practice, has unintended effects or conflicts with something else."
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: "Who is affected, and how? (optional)"
+      description: "For example, service providers, relying parties, people using a service, or conformity assessment bodies."
+    validations:
+      required: false
+  - type: textarea
+    id: evidence
+    attributes:
+      label: "Evidence or examples (optional)"
+      description: "For example, experience from certification, a worked example, or guidance that conflicts."
+    validations:
+      required: false
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: "Suggested change (optional)"
+      description: "If you have one. It is fine to leave this blank."
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: "Issues are public. Do not include personal data, such as names, email addresses or details about individuals."

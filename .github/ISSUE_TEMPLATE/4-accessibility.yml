@@ -1,0 +1,64 @@
+name: "Accessibility problem"
+description: "Something is hard to read, navigate or use, including with assistive technology."
+labels: ["accessibility", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: "Accessibility problems are a priority. Tell us as much as you are comfortable sharing."
+  - type: dropdown
+    id: section
+    attributes:
+      label: "Where is the problem?"
+      options:
+        - "0. Version and certification validity notes"
+        - "1. Introduction"
+        - "2. Feedback received and updates"
+        - "3. Terms and definitions"
+        - "4. How organisations participate in the trust framework"
+        - "5. Rules for identity service providers"
+        - "6. Rules for attribute service providers"
+        - "7. Rules for holder service providers"
+        - "8. Rules for orchestration service providers"
+        - "9. Rules for component service providers"
+        - "10. Inclusivity, accessibility and service design"
+        - "11. Operational requirements"
+        - "12. Service requirements"
+        - "13. The register of digital identity and attribute services"
+        - "14. The UK CertifID trust mark"
+        - "15. Table of standards, guidance and legislation"
+        - "16. Glossary of terms and definitions"
+        - "Not about a specific section"
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: "What kind of problem is it?"
+      options:
+        - "Image or diagram without a useful description"
+        - "Headings or reading order"
+        - "Table is hard to follow"
+        - "Link text is unclear"
+        - "Colour or contrast"
+        - "Screen reader or other assistive technology"
+        - "Keyboard navigation"
+        - "Language is hard to understand"
+        - "Something else"
+    validations:
+      required: true
+  - type: textarea
+    id: detail
+    attributes:
+      label: "What is the problem?"
+      description: "Describe what happened and what you expected."
+    validations:
+      required: true
+  - type: input
+    id: technology
+    attributes:
+      label: "Assistive technology or browser (optional)"
+      description: "If relevant."
+      placeholder: "For example, NVDA with Firefox on Windows"
+  - type: markdown
+    attributes:
+      value: "Issues are public. Do not include personal data, such as names, email addresses or details about individuals."
