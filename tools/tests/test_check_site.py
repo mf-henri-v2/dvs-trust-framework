@@ -63,6 +63,52 @@ class SiteChecks(unittest.TestCase):
     def test_repository_material_must_not_leak(self):
         self.assertTrue(any("leaked" in p for p in self.problems("<p>Repository navigation</p>")))
 
+    def test_ids_must_be_unique(self):
+        problems = self.problems('<h2 id="a">A</h2><p id="a">x</p>')
+        self.assertTrue(any("more than one element has id 'a'" in p for p in problems))
+
+
+def rule(number: str, anchor: str | None = None, reference: str | None = None) -> str:
+    anchor = anchor or "section-" + number.replace(".", "_")
+    reference = reference or f"{number} (https://example.org/page/#{anchor})"
+    return (
+        f'<div class="app-rule-block" data-rule="{number}" data-reference="{reference}" data-heading="12.1. Heading">'
+        f'<p id="{anchor}" class="app-rule govuk-body">{number}. Text.</p></div>'
+    )
+
+
+def picker(*references: str) -> str:
+    options = "".join(f'<option value="{reference}">x</option>' for reference in references)
+    return f'<select id="rule-feedback-reference" name="reference"><option value="">Choose a rule</option>{options}</select>'
+
+
+class RuleFeedbackChecks(unittest.TestCase):
+    setUp = SiteChecks.setUp
+    problems = SiteChecks.problems
+
+    REF_A = "12.1.a (https://example.org/page/#section-12_1_a)"
+    REF_B = "12.1.b (https://example.org/page/#section-12_1_b)"
+
+    def test_rules_with_anchors_blocks_and_picker_pass(self):
+        self.assertEqual(self.problems(rule("12.1.a") + rule("12.1.b") + picker(self.REF_A, self.REF_B)), [])
+
+    def test_rule_without_a_feedback_block(self):
+        problems = self.problems('<p id="section-12_1_a" class="app-rule govuk-body">12.1.a. Text.</p>')
+        self.assertTrue(any("has no feedback block" in p for p in problems))
+
+    def test_anchor_must_match_the_rule_number(self):
+        problems = self.problems(rule("12.1.a", anchor="section-12_1_b") + picker(self.REF_A))
+        self.assertTrue(any("does not match its number" in p for p in problems))
+
+    def test_reference_must_link_to_the_rule(self):
+        reference = "12.1.a (https://example.org/page/#section-12_9_z)"
+        problems = self.problems(rule("12.1.a", reference=reference) + picker(reference))
+        self.assertTrue(any("does not link to #section-12_1_a" in p for p in problems))
+
+    def test_picker_must_list_every_rule(self):
+        problems = self.problems(rule("12.1.a") + rule("12.1.b") + picker(self.REF_A))
+        self.assertTrue(any("rule picker does not list exactly" in p for p in problems))
+
 
 if __name__ == "__main__":
     unittest.main()
