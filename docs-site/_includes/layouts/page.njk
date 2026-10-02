@@ -60,6 +60,7 @@
             <li><a class="govuk-link" href="{{ repositoryUrl }}/blob/main/{{ repoPath }}">View this page on GitHub</a></li>
           </ul>
           {% if ruleGroups | length %}
+            <p class="govuk-body-s app-rule-hint">You can also give feedback on a specific rule by pointing to or tapping it.</p>
             <form class="app-rule-picker" id="rule-feedback" action="{{ repositoryUrl }}/issues/new/choose" method="get">
               <div class="govuk-form-group">
                 <label class="govuk-label govuk-label--s" for="rule-feedback-reference">Give feedback on a specific rule</label>

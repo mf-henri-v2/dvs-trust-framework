@@ -52,12 +52,14 @@ if (picker && blocks.length) {
     });
     block.addEventListener("pointerleave", (event) => {
       if (event.pointerType !== "mouse") return;
-      // A short delay, so the pointer can cross the gap to the link.
+      // The rule and the space beside it, where the link is, count as one
+      // area. The delay forgives a pointer that briefly strays outside it.
+      // Pointing to another rule switches to it straight away.
       hideTimer = setTimeout(() => {
         if (hovered !== block || action.contains(document.activeElement)) return;
         hovered = null;
         update();
-      }, 300);
+      }, 700);
     });
   }
 

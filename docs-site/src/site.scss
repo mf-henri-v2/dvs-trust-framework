@@ -65,7 +65,10 @@
 
   @include govuk-media-query($from: desktop) {
     position: absolute;
+    // As tall as the rule, with the link at the top, so the rule and the
+    // space beside it are one area for the pointer.
     top: 0;
+    bottom: 0;
     left: 100%;
     width: max-content;
     max-width: 50%;
@@ -73,6 +76,17 @@
     // Padding, not a margin, so the pointer can reach the link without
     // leaving the rule.
     padding-left: govuk-spacing(6);
+  }
+}
+
+// The hint about pointing to or tapping a rule. Only shown when JavaScript
+// runs, because pointing and tapping need it.
+.app-rule-hint {
+  display: none;
+  color: govuk-functional-colour(secondary-text);
+
+  .govuk-frontend-supported & {
+    display: block;
   }
 }
 
