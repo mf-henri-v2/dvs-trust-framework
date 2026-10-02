@@ -10,9 +10,15 @@ import { fileURLToPath } from "node:url";
 import nunjucks from "nunjucks";
 import { EleventyHtmlBasePlugin } from "@11ty/eleventy";
 import { markdownLibrary, stripRepositoryFurniture, firstHeading, siteUrlFor, REPOSITORY_URL } from "./lib/markdown.js";
+import { feedbackUrl } from "./lib/feedback.js";
 
 const SITE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const GOVUK_FRONTEND = path.join(SITE_DIR, "node_modules", "govuk-frontend", "dist");
+
+// Where the site is published, used to link back to a page from a GitHub
+// issue. The Reading site workflow sets SITE_URL to the GitHub Pages address
+// of the repository it runs in, so a fork links to its own copy.
+const SITE_URL = (process.env.SITE_URL || "https://ofdia-uk.github.io/dvs-trust-framework/").replace(/\/?$/, "/");
 
 /** Repository-relative path of a page's source file, for example "trust-framework-1.0/README.md". */
 const repoPathOf = (inputPath) => inputPath.replace(/\\/g, "/").replace(/^(\.\.\/|\.\/)+/, "");
@@ -85,6 +91,9 @@ export default function (eleventyConfig) {
     const match = /^trust-framework-1\.0\/part-(\d)\//.exec(repoPath ?? "");
     return match ? Number(match[1]) : null;
   });
+  eleventyConfig.addFilter("feedbackUrl", (pageUrl, title) =>
+    feedbackUrl({ repositoryUrl: REPOSITORY_URL, siteUrl: SITE_URL, pageUrl, title }),
+  );
   eleventyConfig.addGlobalData("repositoryUrl", REPOSITORY_URL);
 }
 

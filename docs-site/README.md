@@ -16,6 +16,16 @@ The site has no copy of the text. [Eleventy](https://www.11ty.dev/) renders the 
 
 The Markdown is never processed by a template engine, so nothing in the policy text can be interpreted as code.
 
+## Feedback links
+
+The "Give feedback on GitHub" link at the bottom of each trust framework page opens the issue template chooser, as it would on GitHub. [`lib/feedback.js`](lib/feedback.js) adds the page title and address to the link. GitHub passes them on to the **Page you were reading** field of whichever form the reader picks. The reader can change it before submitting.
+
+GitHub fills in text fields from a link, but not dropdowns, so the reader still chooses the section. Labels still come from the form the reader picks. The link adds no labels, because GitHub accepts the `labels` query parameter only from people who can already label issues.
+
+The page address uses `SITE_URL`. The Reading site workflow sets it to the GitHub Pages address of the repository it runs in. Without it, the address of the OfDIA site is used.
+
+The link is to the page, not to a heading on it. Headings have stable IDs, but the site cannot tell which part of a page the reader means, so they can add a rule number in the form.
+
 ## Branding
 
 The site is not part of GOV.UK. Following the GOV.UK Design System rules for services on other domains, it uses [GOV.UK Frontend](https://frontend.design-system.service.gov.uk/) components with:
@@ -52,9 +62,10 @@ python3 ../tools/check_site.py _site
 | --- | --- |
 | `eleventy.config.js` | Which files become pages, their addresses, and site-wide data |
 | `lib/markdown.js` | How the Markdown is rendered |
+| `lib/feedback.js` | The address of the "Give feedback on GitHub" link on each page |
 | `_includes/layouts/` | Page templates: `base.njk` for every page, `page.njk` for pages rendered from Markdown |
 | `_data/site.js` | Site title, organisation and publication links, and part titles |
 | `pages/index.njk` | The home page |
 | `src/site.scss` | GOV.UK Frontend settings and the site's own styles |
 | `assets/init.js` | Starts GOV.UK Frontend's JavaScript |
-| `test/` | Tests for the Markdown rendering |
+| `test/` | Tests for the Markdown rendering and the feedback link |
