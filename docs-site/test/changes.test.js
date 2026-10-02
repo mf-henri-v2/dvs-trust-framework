@@ -48,9 +48,10 @@ function repository({ tag = "annotated" } = {}) {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     fs.writeFileSync(path.join(root, file), text);
   };
-  const commit = (message) => {
+  const commit = (message, date) => {
     git("add", "-A");
-    git("commit", "-q", "-m", message);
+    const env = date ? { ...process.env, GIT_AUTHOR_DATE: `${date}T12:00:00Z`, GIT_COMMITTER_DATE: `${date}T12:00:00Z` } : process.env;
+    execFileSync("git", ["commit", "-q", "-m", message], { cwd: root, env, stdio: ["ignore", "pipe", "pipe"] });
   };
   git("init", "-q", "-b", "main");
   git("config", "user.name", "Test");
@@ -69,6 +70,7 @@ function repository({ tag = "annotated" } = {}) {
 /** Facts that must hold for any result, so the output can never contradict itself. */
 function assertConsistent(result) {
   assert.equal(result.unchanged, result.sections.length === 0, "unchanged exactly when no section is listed");
+  if (result.unchanged) assert.equal(result.current.lastChanged, null, "no 'last changed' date when unchanged");
   const paths = result.sections.map((section) => section.path);
   const slugs = result.sections.map((section) => section.slug);
   assert.equal(new Set(paths).size, paths.length, "each file is listed once");
@@ -220,6 +222,40 @@ test("fails when the baseline file is missing or incomplete", () => {
   assert.throws(() => readBaseline(repo.root), /Cannot read framework-baseline\.json/);
 });
 
+test("no 'last changed' date when only repository work has happened since the baseline", () => {
+  const repo = repository();
+  repo.write("docs-site/README.md", "Changed\n");
+  repo.commit("Repository work", "2026-08-01");
+  assert.equal(changes(repo).current.lastChanged, null);
+});
+
+test("the 'last changed' date ignores later repository-only and banner-only commits", () => {
+  const repo = repository();
+  repo.write(S12, framework(S12_TEXT.replace("test your controls", "test your controls regularly")));
+  repo.commit("Change rule 12.1.b", "2026-07-01");
+  repo.write("docs-site/README.md", "Website work\n");
+  repo.commit("Repository work", "2026-08-01");
+  repo.write(S12, framework(S12_TEXT.replace("test your controls", "test your controls regularly"), { bannerWording: "New banner." }));
+  repo.commit("Banner only", "2026-09-01");
+  assert.equal(changes(repo).current.lastChanged, "2026-07-01");
+});
+
+test("the 'last changed' date of a merged pull request is when it was merged into main", () => {
+  const repo = repository();
+  repo.git("checkout", "-q", "-b", "proposal");
+  repo.write(S1, framework(S1_TEXT.replace("helps people", "helps everyone")));
+  repo.commit("Change rule 1.1.a", "2026-07-01");
+  repo.git("checkout", "-q", "main");
+  execFileSync("git", ["merge", "-q", "--no-ff", "-m", "Merge the proposal", "proposal"], {
+    cwd: repo.root,
+    env: { ...process.env, GIT_AUTHOR_DATE: "2026-07-15T12:00:00Z", GIT_COMMITTER_DATE: "2026-07-15T12:00:00Z" },
+    stdio: "ignore",
+  });
+  repo.write("docs-site/README.md", "Later website work\n");
+  repo.commit("Repository work", "2026-08-01");
+  assert.equal(changes(repo).current.lastChanged, "2026-07-15");
+});
+
 // The real repository: whatever the current state, what the site says must be
 // consistent with the files under trust-framework-1.0/.
 test("this repository: the result matches a direct comparison of the framework folder", () => {
@@ -228,7 +264,10 @@ test("this repository: the result matches a direct comparison of the framework f
   const git = (...args) => execFileSync("git", args, { cwd: REPO_ROOT, encoding: "utf-8" }).trim();
   const baseline = readBaseline(REPO_ROOT);
   const identical = git("rev-parse", `${baseline.tag}^{commit}:${FRAMEWORK_DIR}`) === git("rev-parse", `HEAD:${FRAMEWORK_DIR}`);
-  if (identical) assert.equal(result.unchanged, true, "identical framework folders must be reported as unchanged");
+  if (identical) {
+    assert.equal(result.unchanged, true, "identical framework folders must be reported as unchanged");
+    assert.equal(result.current.lastChanged, null, "no 'last changed' date when nothing has changed");
+  }
   const changedFiles = git("diff", "--name-only", `${baseline.tag}^{commit}`, "HEAD", "--", `${FRAMEWORK_DIR}/`).split("\n").filter(Boolean);
   for (const section of result.sections) assert.ok(changedFiles.includes(section.path), `${section.path} really changed`);
 });

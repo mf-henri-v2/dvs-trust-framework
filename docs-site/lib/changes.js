@@ -53,7 +53,9 @@ export function frameworkText(source) {
 /**
  * The changes to the framework content between the baseline and HEAD.
  *
- * Returns { baseline, current, unchanged, sections }. Each changed section
+ * Returns { baseline, current, unchanged, sections }. current.lastChanged is
+ * the date the framework text last changed on main, or null if it has not
+ * changed since the baseline. Each changed section
  * (one per changed file) has its path, status (added, removed, changed or
  * moved), title, site address, a short summary and the changed blocks.
  */
@@ -91,52 +93,73 @@ export function frameworkChanges(root) {
     throw new FrameworkChangesError(`The working draft has no ${FRAMEWORK_DIR}/ folder.`);
   }
 
-  const result = {
-    baseline: { ...baseline, commit: baseCommit },
-    current: { commit: head, date: git("show", "-s", "--format=%cs", head).trim() },
-    unchanged: true,
-    sections: [],
-  };
-
-  // Quick answer: the framework folder is exactly the same.
   const tree = (commit) => (gitOk("rev-parse", "--verify", "--quiet", `${commit}:${FRAMEWORK_DIR}`) ? git("rev-parse", `${commit}:${FRAMEWORK_DIR}`).trim() : null);
-  if (tree(baseCommit) === tree(head)) return result;
-
   // cat-file rather than show: show also checks "commit:file" as a file name,
   // which fails on Windows when the path is long.
   const show = (commit, file) => git("cat-file", "blob", `${commit}:${file}`);
   const comparable = (file, text) => (file.endsWith(".md") ? frameworkText(text) : text);
 
-  // Git's own rename detection is not used: the caution banner and footer
-  // make small files look similar. A file counts as moved only when a
-  // removed file and an added file have exactly the same wording.
-  const entries = [];
-  const fields = git("diff", "--name-status", "--no-renames", "-z", baseCommit, head, "--", `${FRAMEWORK_DIR}/`).split("\0").filter(Boolean);
-  for (let i = 0; i < fields.length; i += 2) {
-    const [code, file] = [fields[i], fields[i + 1]];
-    entries.push({
-      oldPath: code === "A" ? null : file,
-      newPath: code === "D" ? null : file,
-      oldText: code === "A" ? null : show(baseCommit, file),
-      newText: code === "D" ? null : show(head, file),
-    });
-  }
-  for (const added of entries.filter((entry) => !entry.oldPath)) {
-    const removed = entries.find(
-      (entry) => !entry.newPath && !entry.pairedWith && comparable(entry.oldPath, entry.oldText) === comparable(added.newPath, added.newText),
-    );
-    if (removed) {
-      Object.assign(added, { oldPath: removed.oldPath, oldText: removed.oldText, renamed: true });
-      removed.pairedWith = added;
+  /**
+   * The framework files that really differ between two commits: not only in
+   * their caution banner or footer. Git's own rename detection is not used,
+   * because the banner and footer make small files look similar. A file
+   * counts as moved only when a removed file and an added file have exactly
+   * the same wording.
+   */
+  const fileChanges = (from, to) => {
+    if (tree(from) === tree(to)) return [];
+    const entries = [];
+    const fields = git("diff", "--name-status", "--no-renames", "-z", from, to, "--", `${FRAMEWORK_DIR}/`).split("\0").filter(Boolean);
+    for (let i = 0; i < fields.length; i += 2) {
+      const [code, file] = [fields[i], fields[i + 1]];
+      entries.push({
+        oldPath: code === "A" ? null : file,
+        newPath: code === "D" ? null : file,
+        oldText: code === "A" ? null : show(from, file),
+        newText: code === "D" ? null : show(to, file),
+        renamed: false,
+      });
     }
-  }
+    for (const added of entries.filter((entry) => !entry.oldPath)) {
+      const removed = entries.find(
+        (entry) => !entry.newPath && !entry.pairedWith && comparable(entry.oldPath, entry.oldText) === comparable(added.newPath, added.newText),
+      );
+      if (removed) {
+        Object.assign(added, { oldPath: removed.oldPath, oldText: removed.oldText, renamed: true });
+        removed.pairedWith = added; // shown as part of the file it moved to
+      }
+    }
+    return entries
+      .filter((entry) => !entry.pairedWith)
+      .map((entry) => ({
+        ...entry,
+        same: entry.oldText !== null && entry.newText !== null && comparable(entry.newPath, entry.oldText) === comparable(entry.newPath, entry.newText),
+      }))
+      .filter((entry) => !entry.same || entry.renamed); // drop banner- or footer-only changes
+  };
 
-  for (const { oldPath, newPath, oldText, newText, renamed = false, pairedWith } of entries) {
-    if (pairedWith) continue; // shown as part of the file it moved to
+  /**
+   * When the framework text last changed on main: the date of the most
+   * recent commit on main's own line of history (so a merged pull request
+   * counts from when it was merged) that really changed the framework.
+   * Repository-only commits, and banner or footer updates, do not count.
+   */
+  const lastChanged = () => {
+    const commits = git("rev-list", "--first-parent", `${baseCommit}..${head}`, "--", `${FRAMEWORK_DIR}/`).split("\n").filter(Boolean);
+    const commit = commits.find((each) => fileChanges(`${each}^1`, each).length > 0);
+    return commit ? git("show", "-s", "--format=%cs", commit).trim() : null;
+  };
+
+  const changed = fileChanges(baseCommit, head);
+  const result = {
+    baseline: { ...baseline, commit: baseCommit },
+    current: { commit: head, lastChanged: changed.length ? lastChanged() : null },
+    unchanged: true,
+    sections: [],
+  };
+
+  for (const { oldPath, newPath, oldText, newText, renamed, same } of changed) {
     const markdown = (newPath ?? oldPath).endsWith(".md");
-    const same = oldText !== null && newText !== null && comparable(newPath, oldText) === comparable(newPath, newText);
-    if (same && !renamed) continue; // only the repository-only parts changed
-
     const status = !oldPath ? "added" : !newPath ? "removed" : renamed ? "moved" : "changed";
     const items = markdown && !same ? compareBlocks(oldText, newText) : [];
     result.sections.push({

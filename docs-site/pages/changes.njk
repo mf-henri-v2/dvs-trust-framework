@@ -38,8 +38,15 @@ title: What's changed in the trust framework
         </div>
         <div class="govuk-summary-list__row">
           <dt class="govuk-summary-list__key">Working draft</dt>
-          <dd class="govuk-summary-list__value">As accepted on {{ changes.current.date | readableDate }}</dd>
+          <dd class="govuk-summary-list__value">The current working draft (<code class="app-code">main</code>)</dd>
         </div>
+        {# Only commits that really changed the framework text count, never repository-only work. #}
+        {% if changes.current.lastChanged %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Framework text last changed</dt>
+            <dd class="govuk-summary-list__value">{{ changes.current.lastChanged | readableDate }}</dd>
+          </div>
+        {% endif %}
       </dl>
 
       {% if not changes.unchanged %}
