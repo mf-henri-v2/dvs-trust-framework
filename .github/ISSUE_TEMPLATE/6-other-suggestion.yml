@@ -27,6 +27,11 @@ body:
         - "Not about a specific section"
     validations:
       required: false
+  - type: input
+    id: page
+    attributes:
+      label: "Page you were reading (optional)"
+      description: "If you used the feedback link on the reading site, this is filled in for you. You can change it or leave it blank."
   - type: textarea
     id: suggestion
     attributes:

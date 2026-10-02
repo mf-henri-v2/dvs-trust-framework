@@ -28,6 +28,11 @@ body:
     validations:
       required: true
   - type: input
+    id: page
+    attributes:
+      label: "Page you were reading (optional)"
+      description: "If you used the feedback link on the reading site, this is filled in for you. You can change it or leave it blank."
+  - type: input
     id: link
     attributes:
       label: "Which link or page? (optional)"
