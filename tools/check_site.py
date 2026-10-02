@@ -7,6 +7,10 @@ Run after building the site:
 For every HTML page it checks that:
 
 - each internal link and #anchor points to a page and element that exist;
+- no two elements on a page share an id;
+- every numbered rule has an anchor made from its number and a feedback
+  route: it sits in a rule block whose feedback reference is the rule
+  number and a link to that anchor, and it is in the page's rule picker;
 - the page has a language, a title and exactly one <h1>, and its heading
   levels do not skip (for example from <h2> straight to <h4>);
 - every image has an alt attribute;
@@ -43,11 +47,33 @@ class Page(HTMLParser):
         self.has_title = False
         self.has_phase_banner = False
         self.text: list[str] = []
+        self.duplicate_ids: list[str] = []
+        # Rule-level feedback: (rule number, feedback reference) for each rule
+        # block, (anchor, index of its block or None) for each rule, and the
+        # values in the rule picker.
+        self.rule_blocks: list[tuple[str, str]] = []
+        self.rules: list[tuple[str, int | None]] = []
+        self.picker_options: list[str] = []
+        self._open_block: int | None = None
+        self._in_picker = False
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
         if a.get("id"):
+            if a["id"] in self.ids:
+                self.duplicate_ids.append(a["id"])
             self.ids.add(a["id"])
+        classes = (a.get("class") or "").split()
+        if tag == "div" and "app-rule-block" in classes:
+            self.rule_blocks.append((a.get("data-rule", ""), a.get("data-reference", "")))
+            self._open_block = len(self.rule_blocks) - 1
+        if tag == "p" and "app-rule" in classes:
+            self.rules.append((a.get("id", ""), self._open_block))
+            self._open_block = None
+        if tag == "select" and a.get("id") == "rule-feedback-reference":
+            self._in_picker = True
+        if tag == "option" and self._in_picker and a.get("value"):
+            self.picker_options.append(a["value"])
         if tag == "a" and a.get("name"):
             self.ids.add(a["name"])
         if tag == "html":
@@ -64,6 +90,10 @@ class Page(HTMLParser):
             self.headings.append(int(tag[1]))
         if "govuk-phase-banner" in (a.get("class") or "").split():
             self.has_phase_banner = True
+
+    def handle_endtag(self, tag):
+        if tag == "select":
+            self._in_picker = False
 
     def handle_data(self, data):
         self.text.append(data)
@@ -99,6 +129,25 @@ def resolve(site: Path, page_path: Path, href: str, prefix: str) -> tuple[Path |
     return target, parts.fragment
 
 
+def rule_problems(page: Page) -> list[str]:
+    """Problems with the anchors and feedback routes of a page's numbered rules."""
+    problems = []
+    for anchor, block in page.rules:
+        if block is None:
+            problems.append(f"rule {anchor!r} has no feedback block")
+            continue
+        number, reference = page.rule_blocks[block]
+        if anchor != "section-" + number.replace(".", "_"):
+            problems.append(f"rule {number!r} has anchor {anchor!r}, which does not match its number")
+        if not (reference.startswith(f"{number} (") and reference.endswith(f"#{anchor})")):
+            problems.append(f"the feedback reference for rule {number!r} does not link to #{anchor}: {reference!r}")
+    if len(page.rule_blocks) != len(page.rules):
+        problems.append(f"{len(page.rule_blocks)} rule blocks but {len(page.rules)} rules")
+    if page.rule_blocks and page.picker_options != [reference for _, reference in page.rule_blocks]:
+        problems.append("the rule picker does not list exactly the rules on the page, in order")
+    return problems
+
+
 def check(site: Path, prefix: str) -> list[str]:
     problems: list[str] = []
     pages = {p.resolve(): parse(p) for p in site.rglob("*.html")}
@@ -121,6 +170,9 @@ def check(site: Path, prefix: str) -> list[str]:
             problems.append(f"{rel}: {page.images_without_alt} image(s) without an alt attribute")
         if not page.has_phase_banner:
             problems.append(f"{rel}: draft status banner is missing")
+        for duplicate in sorted(set(page.duplicate_ids)):
+            problems.append(f"{rel}: more than one element has id {duplicate!r}")
+        problems.extend(f"{rel}: {problem}" for problem in rule_problems(page))
         for leaked in ("caution-banner:", "Repository navigation"):
             if leaked in text:
                 problems.append(f"{rel}: repository-only text leaked into the page: {leaked!r}")
@@ -153,7 +205,7 @@ def main() -> int:
     if problems:
         print(f"\n{len(problems)} problem(s) found in {pages} pages.")
         return 1
-    print(f"{pages} pages checked: links, anchors, headings, images and status banner are all in order.")
+    print(f"{pages} pages checked: links, anchors, IDs, headings, images, status banner and rule feedback are all in order.")
     return 0
 
 

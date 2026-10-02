@@ -30,6 +30,8 @@ jobs:
     env:
       # GitHub Pages serves a project site from /<repository name>/.
       PATH_PREFIX: /${{ github.event.repository.name }}/
+      # Feedback links point back to the page at this address.
+      SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
     steps:
       - uses: actions/checkout@v7
         with:
@@ -53,7 +55,7 @@ jobs:
         working-directory: docs-site
         run: npm run build
 
-      - name: Check links, anchors, headings and the draft banner
+      - name: Check links, anchors, IDs, headings, rule feedback and the draft banner
         run: python3 tools/check_site.py docs-site/_site --path-prefix "$PATH_PREFIX"
 
       - name: Upload the site for publishing

@@ -33,8 +33,8 @@ body:
   - type: input
     id: reference
     attributes:
-      label: "Rule or paragraph number (optional)"
-      description: "If you know it. Rule numbers start with their section number."
+      label: "Rule, paragraph or page (optional)"
+      description: "If you know it. Rule numbers start with their section number. Feedback links on the reading site fill this in for you."
       placeholder: "For example, 12.4.1.c"
   - type: textarea
     id: feedback
