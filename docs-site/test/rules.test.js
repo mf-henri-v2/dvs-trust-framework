@@ -5,11 +5,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { markdownLibrary, stripRepositoryFurniture, ruleAnchor } from "../lib/markdown.js";
-import { feedbackUrl, siteAddress } from "../lib/feedback.js";
+import { feedbackUrl, siteAddress, SITE_URL } from "../lib/feedback.js";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SECTION_12 = "trust-framework-1.0/part-3/12-service-requirements.md";
 const SECTION_11 = "trust-framework-1.0/part-3/11-operational-requirements.md";
+// Links use SITE_URL, which the Reading site workflow sets to the repository's own Pages address.
 
 const render = (source, repoPath) => markdownLibrary.render(stripRepositoryFurniture(source), { page: { inputPath: `../${repoPath}` } });
 const feedbackLinks = (html) => [...html.matchAll(/<a [^>]*href="([^"]*)"[^>]*>Give feedback on ([^<]+)<\/a>/g)];
@@ -69,7 +70,7 @@ test("the feedback link fills in the rule number and a direct link to the rule",
   assert.ok(href.startsWith("https://github.com/ofdia-uk/dvs-trust-framework/issues/new/choose?reference="));
   assert.equal(
     referenceOf(href),
-    "12.1.a (https://ofdia-uk.github.io/dvs-trust-framework/trust-framework-1.0/part-3/12-service-requirements/#section-12_1_a)",
+    `12.1.a (${SITE_URL}trust-framework-1.0/part-3/12-service-requirements/#section-12_1_a)`,
   );
 });
 
@@ -87,5 +88,5 @@ test("section 12: every rule has one unique anchor and one feedback link", () =>
 test("the page feedback link fills in the page address", () => {
   const href = feedbackUrl("https://github.com/ofdia-uk/dvs-trust-framework", siteAddress("/trust-framework-1.0/part-3/"));
   assert.doesNotMatch(href, /\+/, "spaces are written as %20");
-  assert.equal(referenceOf(href), "https://ofdia-uk.github.io/dvs-trust-framework/trust-framework-1.0/part-3/");
+  assert.equal(referenceOf(href), `${SITE_URL}trust-framework-1.0/part-3/`);
 });
