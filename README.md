@@ -15,7 +15,7 @@ We use this repository to share the trust framework as it develops, gather feedb
 
 - **Published version:** [UK digital verification services trust framework 1.0](https://www.gov.uk/government/publications/uk-digital-verification-services-trust-framework-1-0) on GOV.UK. This is the authoritative version.
 - **This repository:** the working draft. It starts from the published 1.0 text and may include accepted changes that have not been published yet.
-- **Changes since publication:** [what's changed in the trust framework](https://ofdia-uk.github.io/dvs-trust-framework/changes/) compares the trust framework wording with published 1.0. Changes to the website and tools are not included.
+- **Changes since publication:** [what's changed in the trust framework](https://ofdia-uk.github.io/dvs-trust-framework/changes/) compares the trust framework content (its wording, links and formatting) with published 1.0. Changes to the website and tools are not included.
 
 A change accepted here does not change government policy. Changes take effect only when OfDIA publishes a new version on GOV.UK. [How versions work](VERSIONS.md).
 
@@ -72,7 +72,7 @@ Anyone with a GitHub account can give feedback. You do not need to suggest new w
 Changes are proposed and reviewed in pull requests before OfDIA accepts them. Each pull request shows exactly which words changed, the discussion about the change, and the feedback that led to it.
 
 - [Pull requests](https://github.com/ofdia-uk/dvs-trust-framework/pulls): proposed changes and their review
-- [What's changed in the trust framework](https://ofdia-uk.github.io/dvs-trust-framework/changes/): the trust framework wording compared with published 1.0
+- [What's changed in the trust framework](https://ofdia-uk.github.io/dvs-trust-framework/changes/): the trust framework content compared with published 1.0
 - [Repository history](https://github.com/ofdia-uk/dvs-trust-framework/commits/main): every accepted change, including changes to the website and tools, newest first
 
 ## About this repository

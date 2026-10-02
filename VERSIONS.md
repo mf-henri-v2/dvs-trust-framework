@@ -26,14 +26,16 @@ Earlier publications of the trust framework, such as gamma (0.4) and beta (0.3),
 
 ## Compare the working draft with a published version
 
-- On the reading site: [what's changed in the trust framework](https://ofdia-uk.github.io/dvs-trust-framework/changes/) compares only the trust framework text with the baseline. It lists the sections whose wording has changed and shows the changed words. Changes to the website, feedback forms and tools are not included.
+- On the reading site: [what's changed in the trust framework](https://ofdia-uk.github.io/dvs-trust-framework/changes/) compares only the trust framework content with the baseline: its wording, links and formatting. It lists the sections that differ and shows what changed. Changes to the website, feedback forms and tools are not included.
 - On GitHub, for maintainers: [compare `published-1.0` with the working draft](https://github.com/ofdia-uk/dvs-trust-framework/compare/published-1.0...main). This shows every file that changed since publication, including the website, forms and tools.
-- In a local copy of the repository, for the trust framework text only:
+- In a local copy of the repository, for the trust framework files only:
 
   ```sh
   git fetch --tags
   git diff published-1.0 main -- trust-framework-1.0/
   ```
+
+  This is a raw comparison of the files, line by line. Unlike the reading site, it includes repository material in those files, such as the caution banner and navigation footer, and changes to whitespace that do not change how the text looks.
 
 ## The framework baseline
 
@@ -42,7 +44,7 @@ Earlier publications of the trust framework, such as gamma (0.4) and beta (0.3),
 - Changing the baseline is a deliberate decision, made in a reviewed pull request, for example after a new version is published.
 - Repository-only work, such as changes to the website, feedback forms or tools, never needs a new tag.
 - The baseline must be an annotated tag in the history of `main`. If it is missing, or the build does not have the full Git history, the site build fails instead of saying nothing has changed.
-- Only the files in `trust-framework-1.0/` are compared, without their caution banner and "Repository navigation" footer. Updating those is not a change to the trust framework.
+- Only the content of the files in `trust-framework-1.0/` is compared: its wording, links and formatting. The caution banner, the "Repository navigation" footer and whitespace that does not change how the text looks are left out, so updating them is not a change to the trust framework.
 
 ## Where the text lives
 
