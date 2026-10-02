@@ -11,12 +11,29 @@ import nunjucks from "nunjucks";
 import { EleventyHtmlBasePlugin } from "@11ty/eleventy";
 import { markdownLibrary, stripRepositoryFurniture, firstHeading, siteUrlFor, REPOSITORY_URL } from "./lib/markdown.js";
 import { feedbackUrl, markdownLink, siteAddress, ruleGroups } from "./lib/feedback.js";
+import { frameworkChanges } from "./lib/changes.js";
 
 const SITE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const GOVUK_FRONTEND = path.join(SITE_DIR, "node_modules", "govuk-frontend", "dist");
 
 /** Repository-relative path of a page's source file, for example "trust-framework-1.0/README.md". */
 const repoPathOf = (inputPath) => inputPath.replace(/\\/g, "/").replace(/^(\.\.\/|\.\/)+/, "");
+
+/**
+ * Changes to the trust framework since its baseline, for the "What's changed"
+ * pages. In CI a problem, such as a missing baseline tag or incomplete Git
+ * history, stops the build, so the site never wrongly says nothing changed.
+ * A local build without the history says the information is not available.
+ */
+function loadFrameworkChanges() {
+  try {
+    return { available: true, ...frameworkChanges(path.resolve(SITE_DIR, "..")) };
+  } catch (error) {
+    if (process.env.CI || process.env.GITHUB_ACTIONS) throw error;
+    console.warn(`[framework changes] Not available: ${error.message}`);
+    return { available: false, reason: error.message, sections: [] };
+  }
+}
 
 /** Numbered section files in reading order: 0, 1, 2 … 16. */
 const sectionNumber = (item) => Number(path.basename(item.inputPath).slice(0, 2));
@@ -94,6 +111,15 @@ export default function (eleventyConfig) {
   // The rules in a page, for its rule picker.
   eleventyConfig.addFilter("ruleGroups", ruleGroups);
   eleventyConfig.addGlobalData("repositoryUrl", REPOSITORY_URL);
+
+  const changes = loadFrameworkChanges();
+  eleventyConfig.addGlobalData("frameworkChanges", changes);
+  // A date such as 2026-10-02, written as 2 October 2026.
+  eleventyConfig.addFilter("readableDate", (isoDate) =>
+    new Date(`${isoDate}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }),
+  );
+  // The change to a framework page's source file since the baseline, if any.
+  eleventyConfig.addFilter("frameworkChangeFor", (repoPath) => changes.sections.find((section) => section.path === repoPath) ?? null);
 }
 
 export const config = {

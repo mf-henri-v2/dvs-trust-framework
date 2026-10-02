@@ -1,0 +1,56 @@
+---
+layout: layouts/base.njk
+pagination:
+  data: frameworkChanges.sections
+  size: 1
+  alias: section
+permalink: "/changes/{{ section.slug }}/"
+eleventyComputed:
+  title: "Changes to {{ section.title }}"
+---
+{#
+  One page for each changed framework file: what changed since the baseline,
+  paragraph by paragraph, with the changed words marked. See lib/changes.js.
+#}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+{% set baseline = frameworkChanges.baseline %}
+{{ govukBreadcrumbs({ items: [{ text: "Home", href: "/" }, { text: "What's changed", href: "/changes/" }], collapseOnMobile: true }) }}
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds-from-desktop">
+    <span class="govuk-caption-l">Changes since {{ baseline.name }}</span>
+    <h1 class="govuk-heading-xl">{{ section.title }}</h1>
+    <p class="govuk-body-l" data-section-status="{{ section.status }}">{{ section.summary }}</p>
+
+    <ul class="govuk-list">
+      {% if section.url %}<li><a class="govuk-link" href="{{ section.url }}">Read the current section</a></li>{% endif %}
+      <li><a class="govuk-link" href="{{ repositoryUrl }}/commits/main/{{ section.path }}">History of this section's file on GitHub</a></li>
+    </ul>
+
+    {% if section.items | length %}
+      <p class="govuk-body">
+        Each change is shown with the wording as it is now. Removed words are <del class="app-del">struck through</del>
+        and added words are <ins class="app-ins">underlined</ins>.
+      </p>
+      {% for item in section.items %}
+        <div class="app-change">
+          <h2 class="govuk-heading-s app-change__title">
+            {% if item.anchor and section.url %}<a class="govuk-link" href="{{ section.url }}#{{ item.anchor }}">{{ item.label }}</a>{% else %}{{ item.label }}{% endif %}
+            {% if item.kind == "added" %}<strong class="govuk-tag govuk-tag--green">Added</strong>
+            {% elif item.kind == "removed" %}<strong class="govuk-tag govuk-tag--red">Removed</strong>
+            {% else %}<strong class="govuk-tag govuk-tag--blue">Changed</strong>{% endif %}
+          </h2>
+          {% if item.heading %}<p class="govuk-body-s app-change__context">Under {{ item.heading }}</p>{% endif %}
+          <p class="govuk-body app-change__text">
+            {%- for part in item.parts -%}
+              {%- if part.added -%}<ins class="app-ins"><span class="govuk-visually-hidden">Added: </span>{{ part.text }}</ins>
+              {%- elif part.removed -%}<del class="app-del"><span class="govuk-visually-hidden">Removed: </span>{{ part.text }}</del>
+              {%- else -%}{{ part.text }}{%- endif -%}
+            {%- endfor -%}
+          </p>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <p class="govuk-body"><a class="govuk-link" href="/changes/">See all changes to the trust framework</a></p>
+  </div>
+</div>

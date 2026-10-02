@@ -28,6 +28,15 @@
       {% if isFramework %}<span class="govuk-caption-l">Trust framework working draft</span>{% endif %}
       <h1 class="govuk-heading-xl">{{ title }}</h1>
 
+      {# Only when this page's wording differs from the framework baseline. #}
+      {% set frameworkChange = repoPath | frameworkChangeFor if isFramework else null %}
+      {% if frameworkChange %}
+        <div class="govuk-inset-text app-section-changed">
+          This section has changed since {{ frameworkChanges.baseline.name }}.
+          <a class="govuk-link" href="/changes/{{ frameworkChange.slug }}/">See what has changed</a>.
+        </div>
+      {% endif %}
+
       {# Rule-level feedback, on pages with numbered rules. #}
       {% set ruleGroups = content | ruleGroups %}
       {% if ruleGroups | length %}
