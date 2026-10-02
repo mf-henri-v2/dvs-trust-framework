@@ -30,6 +30,12 @@ body:
         - "Not about a specific section"
     validations:
       required: true
+  - type: input
+    id: reference
+    attributes:
+      label: "Rule, paragraph or page (optional)"
+      description: "If you know it. Rule numbers start with their section number. Feedback links on the reading site fill this in for you."
+      placeholder: "For example, 12.4.1.c"
   - type: dropdown
     id: category
     attributes:
