@@ -24,7 +24,7 @@ title: What's changed in the trust framework
     {% else %}
       {% set count = changes.sections | length %}
       <div class="govuk-inset-text app-framework-status" data-framework-status="changed" data-changed-sections="{{ count }}">
-        <p class="govuk-body-l govuk-!-margin-bottom-0"><strong>The trust framework wording has changed in {{ count }} {{ "section" if count == 1 else "sections" }} since {{ baseline.name }}.</strong></p>
+        <p class="govuk-body-l govuk-!-margin-bottom-0"><strong>The trust framework has changed in {{ count }} {{ "section" if count == 1 else "sections" }} since {{ baseline.name }}.</strong></p>
       </div>
     {% endif %}
 
@@ -40,10 +40,10 @@ title: What's changed in the trust framework
           <dt class="govuk-summary-list__key">Working draft</dt>
           <dd class="govuk-summary-list__value">The current working draft (<code class="app-code">main</code>)</dd>
         </div>
-        {# Only commits that really changed the framework text count, never repository-only work. #}
+        {# Only commits that changed how the framework looks count: wording, links or formatting, never repository-only work. #}
         {% if changes.current.lastChanged %}
           <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">Framework text last changed</dt>
+            <dt class="govuk-summary-list__key">Trust framework content last changed</dt>
             <dd class="govuk-summary-list__value">{{ changes.current.lastChanged | readableDate }}</dd>
           </div>
         {% endif %}
@@ -74,8 +74,9 @@ title: What's changed in the trust framework
 
     <h2 class="govuk-heading-m">What this page covers</h2>
     <p class="govuk-body">
-      This page compares only the wording of the trust framework. Changes to this website, the feedback forms and the
-      tools used to maintain the repository are not changes to the trust framework, so they are not listed here.
+      This page compares only the content of the trust framework: its wording, links and formatting. Changes to this website,
+      the feedback forms and the tools used to maintain the repository are not changes to the trust framework, so they are
+      not listed here.
     </p>
     <p class="govuk-body">
       A change accepted into the working draft takes effect only when OfDIA publishes a new version on GOV.UK.

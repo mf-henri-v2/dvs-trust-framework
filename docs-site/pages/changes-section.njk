@@ -37,6 +37,8 @@ eleventyComputed:
             {% if item.anchor and section.url %}<a class="govuk-link" href="{{ section.url }}#{{ item.anchor }}">{{ item.label }}</a>{% else %}{{ item.label }}{% endif %}
             {% if item.kind == "added" %}<strong class="govuk-tag govuk-tag--green">Added</strong>
             {% elif item.kind == "removed" %}<strong class="govuk-tag govuk-tag--red">Removed</strong>
+            {% elif item.kind == "link" %}<strong class="govuk-tag govuk-tag--purple">Link changed</strong>
+            {% elif item.kind == "formatting" %}<strong class="govuk-tag govuk-tag--grey">Formatting changed</strong>
             {% else %}<strong class="govuk-tag govuk-tag--blue">Changed</strong>{% endif %}
           </h2>
           {% if item.heading %}<p class="govuk-body-s app-change__context">Under {{ item.heading }}</p>{% endif %}
@@ -47,6 +49,19 @@ eleventyComputed:
               {%- else -%}{{ part.text }}{%- endif -%}
             {%- endfor -%}
           </p>
+          {% if item.links | length %}
+            <ul class="govuk-list govuk-list--bullet app-change__links">
+              {% for link in item.links %}
+                {% set noun = "image" if link.image else "link" %}
+                <li>
+                  {% if link.from and link.to %}The {{ noun }} “{{ link.text }}” now goes to <a class="govuk-link" href="{{ link.to }}">{{ link.to }}</a>. It previously went to {{ link.from }}.
+                  {% elif link.to %}A {{ noun }} “{{ link.text }}” to <a class="govuk-link" href="{{ link.to }}">{{ link.to }}</a> was added.
+                  {% else %}The {{ noun }} “{{ link.text }}” to {{ link.from }} was removed.{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+          {% if item.kind == "formatting" %}<p class="govuk-body">The formatting changed. The wording and links are the same.</p>{% endif %}
         </div>
       {% endfor %}
     {% endif %}

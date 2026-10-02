@@ -10,6 +10,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { frameworkChanges, readBaseline, FrameworkChangesError, FRAMEWORK_DIR } from "../lib/changes.js";
+import { SITE_URL } from "../lib/feedback.js";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -41,7 +42,7 @@ const framework = (text, { bannerWording = "Working draft.", footerLinks = "[Hom
   banner(bannerWording) + text + footer(footerLinks);
 
 /** A repository with framework files, a baseline file and an annotated published-1.0 tag. */
-function repository({ tag = "annotated" } = {}) {
+function repository({ tag = "annotated", s1 = S1_TEXT } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "framework-changes-"));
   const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] });
   const write = (file, text) => {
@@ -59,7 +60,7 @@ function repository({ tag = "annotated" } = {}) {
   git("config", "core.autocrlf", "false");
   write("framework-baseline.json", JSON.stringify({ tag: "published-1.0", name: "published 1.0" }));
   write(S12, framework(S12_TEXT));
-  write(S1, framework(S1_TEXT));
+  write(S1, framework(s1));
   write("docs-site/README.md", "Site\n");
   commit("Baseline");
   if (tag === "annotated") git("tag", "-a", "published-1.0", "-m", "Published 1.0");
@@ -254,6 +255,91 @@ test("the 'last changed' date of a merged pull request is when it was merged int
   repo.write("docs-site/README.md", "Later website work\n");
   repo.commit("Repository work", "2026-08-01");
   assert.equal(changes(repo).current.lastChanged, "2026-07-15");
+});
+
+// Links, formatting and whitespace. A file has changed only if it looks
+// different on the site; a link destination or formatting change counts.
+const LINKED = [
+  "## 1. Introduction",
+  "",
+  "1.1.a. Read the [data schema](https://www.gov.uk/old-schema) and [section 4](04-how.md#section-4) first.",
+  "",
+  "1.1.b. You must keep records.",
+  "They must be kept safe.",
+  "",
+  "1.1.c. Use the `a b` setting.",
+  "",
+].join("\n");
+// Addresses use SITE_URL, which the Reading site workflow sets to the repository's own Pages address.
+const S1_URL = `${SITE_URL}trust-framework-1.0/part-1/`;
+
+function changedTo(after) {
+  const repo = repository({ s1: LINKED });
+  repo.write(S1, framework(after));
+  repo.commit("Change", "2026-07-01");
+  return changes(repo);
+}
+
+test("a link-only change is listed, with the link's old and new destination", () => {
+  const { unchanged, sections } = changedTo(LINKED.replace("old-schema", "new-schema"));
+  assert.equal(unchanged, false);
+  const [section] = sections;
+  assert.equal(section.summary, "1 link changed.");
+  const [item] = section.items;
+  assert.equal(item.kind, "link");
+  assert.equal(item.rule, "1.1.a");
+  assert.equal(item.parts.some((part) => part.added || part.removed), false, "no words are marked");
+  assert.deepEqual(item.links, [{ text: "data schema", from: "https://www.gov.uk/old-schema", to: "https://www.gov.uk/new-schema", image: false }]);
+});
+
+test("a relative link's destinations are shown as reading site addresses", () => {
+  const [item] = changedTo(LINKED.replace("04-how.md#section-4", "05-rules.md#section-5")).sections[0].items;
+  assert.deepEqual(item.links, [{ text: "section 4", from: `${S1_URL}04-how/#section-4`, to: `${S1_URL}05-rules/#section-5`, image: false }]);
+});
+
+test("a wording change and a link change in the same rule are both shown", () => {
+  const [section] = changedTo(LINKED.replace("Read the [data schema](https://www.gov.uk/old-schema)", "Study the [data schema](https://www.gov.uk/new-schema)")).sections;
+  assert.equal(section.summary, "1 rule changed, 1 link changed.");
+  const [item] = section.items;
+  assert.equal(item.kind, "changed");
+  assert.deepEqual(item.parts.filter((part) => part.added || part.removed).map((part) => part.text), ["Read", "Study"]);
+  assert.equal(item.links.length, 1);
+});
+
+test("formatting-only changes are listed as formatting, including whitespace that renders", () => {
+  for (const [name, after] of [
+    ["bold", LINKED.replace("You must keep", "You **must** keep")],
+    ["hard line break", LINKED.replace("keep records.\n", "keep records.  \n")],
+    ["spacing inside code", LINKED.replace("`a b`", "`a  b`")],
+  ]) {
+    const { unchanged, sections } = changedTo(after);
+    assert.equal(unchanged, false, `${name} counts as a change`);
+    assert.equal(sections[0].summary, "1 formatting change.", name);
+    assert.equal(sections[0].items[0].kind, "formatting", name);
+  }
+});
+
+test("whitespace that does not change how the text looks, and HTML comments, are not changes", () => {
+  for (const [name, after] of [
+    ["extra blank lines", LINKED.replace("\n\n1.1.b", "\n\n\n\n1.1.b")],
+    ["double space in text", LINKED.replace("You must keep", "You must  keep")],
+    ["whitespace-only line", LINKED.replace("\n\n1.1.c", "\n   \n1.1.c")],
+    ["trailing space at the end of a paragraph", LINKED.replace("kept safe.", "kept safe. ")],
+    ["HTML comment", `${LINKED}\n<!-- an editor's note -->\n`],
+  ]) {
+    const result = changedTo(after);
+    assert.equal(result.unchanged, true, name);
+    assert.equal(result.current.lastChanged, null, `${name} does not set a 'last changed' date`);
+  }
+});
+
+test("a whitespace-only commit does not move the 'last changed' date", () => {
+  const repo = repository({ s1: LINKED });
+  repo.write(S1, framework(LINKED.replace("old-schema", "new-schema")));
+  repo.commit("Change a link", "2026-07-01");
+  repo.write(S1, framework(LINKED.replace("old-schema", "new-schema").replace("\n\n1.1.b", "\n\n\n1.1.b")));
+  repo.commit("Whitespace only", "2026-08-01");
+  assert.equal(changes(repo).current.lastChanged, "2026-07-01");
 });
 
 // The real repository: whatever the current state, what the site says must be

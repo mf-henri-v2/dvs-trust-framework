@@ -35,12 +35,17 @@ The addresses in the links use `SITE_URL`. The Reading site workflow sets it to 
 
 ## Changes to the trust framework
 
-The "What's changed" page (`/changes/`) tells readers whether the trust framework wording has changed since its baseline, the tag named in [`framework-baseline.json`](../framework-baseline.json) (initially `published-1.0`). [`lib/changes.js`](lib/changes.js) works this out from Git when the site is built:
+The "What's changed" page (`/changes/`) tells readers whether the trust framework has changed since its baseline, the tag named in [`framework-baseline.json`](../framework-baseline.json) (initially `published-1.0`). [`lib/changes.js`](lib/changes.js) works this out from Git when the site is built:
 
 - Only the files in `trust-framework-1.0/` count. Their caution banner and "Repository navigation" footer are removed first, so changing those is not a change to the trust framework. Changes anywhere else in the repository are ignored.
-- If the wording is unchanged, the page says so.
-- If it has changed, the page lists the changed sections. Each one has a page showing the changed paragraphs, with removed words struck through and added words underlined, and rule numbers linked to the rule. The changed section's own page links to it. Unchanged pages say nothing.
-- A file is "moved" only when its wording is exactly the same in its new place.
+- A file has changed only if it looks different on the site. Both versions are rendered as the site renders them. Whitespace a browser does not show, such as extra blank lines or double spaces, and HTML comments are ignored. Whitespace that matters, such as a hard line break or spacing inside code, still counts.
+- If nothing has changed, the page says the wording is unchanged.
+- If something has changed, the page lists the changed sections and the date the content last changed on `main`. Repository-only commits never change that date. Each changed section has a page showing the changed paragraphs and rule numbers linked to the rule:
+  - **wording changes:** removed words struck through and added words underlined;
+  - **link changes:** the link's old and new destination;
+  - **formatting changes:** marked as formatting, with the wording and links the same.
+- The changed section's own page links to its changes. Unchanged pages say nothing.
+- A file is "moved" only when it looks exactly the same in its new place.
 
 The build needs the baseline tag and the full Git history. In CI, if either is missing, the build fails rather than saying nothing has changed. A local build without them says the information is not available. The tests check the comparison against small example repositories, and the site check confirms that what the page says is consistent.
 

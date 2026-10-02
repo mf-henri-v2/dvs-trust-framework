@@ -146,3 +146,8 @@ abbr[title] {
   background-color: govuk-colour("green", $variant: "tint-80");
   text-decoration: underline;
 }
+
+// Link addresses can be long: let them wrap rather than widen the page.
+.app-change__links {
+  overflow-wrap: anywhere;
+}

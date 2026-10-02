@@ -69,21 +69,28 @@ function githubSlug(text) {
     .replace(/ /g, "-");
 }
 
+/**
+ * Where a link in a Markdown file goes on the site. A relative link is
+ * resolved against the file and mapped to a site page, or to GitHub if the
+ * target is not a site page. Other links are unchanged.
+ */
+export function siteLinkFor(url, sourceRepoPath) {
+  if (!url || /^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith("#") || url.startsWith("/")) return url;
+  const [target, fragment] = url.split("#");
+  const repoPath = path.posix.normalize(path.posix.join(path.posix.dirname(sourceRepoPath), decodeURI(target)));
+  const siteUrl = siteUrlFor(repoPath);
+  const base = siteUrl ?? `${REPOSITORY_URL}/blob/main/${repoPath}`;
+  return fragment ? `${base}#${fragment}` : base;
+}
+
 // Resolve relative links against the source file and map them to site pages.
 // Links to repository files that are not site pages go to GitHub instead.
 function rewriteLinks(md) {
   md.core.ruler.push("site_links", (state) => {
     const inputPath = state.env?.page?.inputPath;
     if (!inputPath) return;
-    const sourceDir = path.posix.dirname(inputPath.replace(/\\/g, "/").replace(/^(\.\.\/|\.\/)+/, ""));
-    const rewrite = (url) => {
-      if (!url || /^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith("#") || url.startsWith("/")) return url;
-      const [target, fragment] = url.split("#");
-      const repoPath = path.posix.normalize(path.posix.join(sourceDir, decodeURI(target)));
-      const siteUrl = siteUrlFor(repoPath);
-      const base = siteUrl ?? `${REPOSITORY_URL}/blob/main/${repoPath}`;
-      return fragment ? `${base}#${fragment}` : base;
-    };
+    const sourceRepoPath = inputPath.replace(/\\/g, "/").replace(/^(\.\.\/|\.\/)+/, "");
+    const rewrite = (url) => siteLinkFor(url, sourceRepoPath);
     const visit = (tokens) => {
       for (const token of tokens) {
         if (token.type === "link_open") token.attrSet("href", rewrite(token.attrGet("href")));
