@@ -37,6 +37,7 @@ If you cannot tell whether a change alters meaning, treat it as a policy change.
 | `tools/` | The caution banner source and tools used by the checks, with their tests |
 | `.github/` | Issue forms, pull request template, code owners and workflows |
 | `docs-site/` | Source for the [reading site](https://ofdia-uk.github.io/dvs-trust-framework/), built from the Markdown and published from `main` |
+| `framework-baseline.json` | The tag the reading site's "What's changed" page compares the trust framework with. See [The framework baseline](VERSIONS.md#the-framework-baseline). |
 
 ## How the text is structured
 
