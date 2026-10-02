@@ -48,9 +48,12 @@ layout: layouts/base.njk
       Changes are proposed and reviewed on GitHub before OfDIA accepts them. You can see exactly which words changed, and why.
     </p>
     <ul class="govuk-list govuk-list--bullet">
+      <li><a class="govuk-link" href="/changes/">What's changed in the trust framework since {{ frameworkChanges.baseline.name if frameworkChanges.available else "publication" }}</a></li>
       <li><a class="govuk-link" href="{{ repositoryUrl }}/pulls">Proposed changes and their review</a></li>
-      <li><a class="govuk-link" href="{{ repositoryUrl }}/commits/main">History of accepted changes</a></li>
-      <li><a class="govuk-link" href="{{ repositoryUrl }}/compare/published-1.0...main">Changes since the published version</a></li>
     </ul>
+    <p class="govuk-body">
+      For maintainers, the <a class="govuk-link" href="{{ repositoryUrl }}/commits/main">repository history on GitHub</a>
+      also includes changes to this website and its tools.
+    </p>
   </div>
 </div>

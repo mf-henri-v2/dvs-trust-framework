@@ -117,3 +117,37 @@ abbr[title] {
   text-decoration: underline dotted;
   cursor: help;
 }
+
+// Changes to the trust framework since its baseline (/changes/). Removed
+// words are struck through and added words underlined, so the change does
+// not depend on colour alone. Screen readers hear "Removed:" and "Added:".
+.app-change {
+  margin-bottom: govuk-spacing(6);
+  padding-bottom: govuk-spacing(2);
+  border-bottom: 1px solid govuk-functional-colour(border);
+}
+
+.app-change__title .govuk-tag {
+  margin-left: govuk-spacing(2);
+  vertical-align: middle;
+}
+
+.app-change__context {
+  margin-top: govuk-spacing(-2);
+  color: govuk-functional-colour(secondary-text);
+}
+
+.app-del {
+  background-color: govuk-colour("red", $variant: "tint-80");
+  text-decoration: line-through;
+}
+
+.app-ins {
+  background-color: govuk-colour("green", $variant: "tint-80");
+  text-decoration: underline;
+}
+
+// Link addresses can be long: let them wrap rather than widen the page.
+.app-change__links {
+  overflow-wrap: anywhere;
+}

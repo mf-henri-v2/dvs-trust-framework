@@ -15,6 +15,8 @@ The site has no copy of the text. [Eleventy](https://www.11ty.dev/) renders the 
 - It gives each numbered rule (for example 12.4.1.c) an anchor made from its number, such as `#section-12_4_1_c`, and marks it for rule-level feedback. See [Feedback links](#feedback-links).
 - It applies GOV.UK Frontend styles.
 
+The site also has a "What's changed" page. See [Changes to the trust framework](#changes-to-the-trust-framework).
+
 The Markdown is never processed by a template engine, so nothing in the policy text can be interpreted as code.
 
 ## Feedback links
@@ -31,6 +33,22 @@ All of this is made when the site is built. A rule is a paragraph that starts wi
 
 The addresses in the links use `SITE_URL`. The Reading site workflow sets it to the GitHub Pages address of the repository it runs in. Without it, the address of the OfDIA site is used.
 
+## Changes to the trust framework
+
+The "What's changed" page (`/changes/`) tells readers whether the trust framework has changed since its baseline, the tag named in [`framework-baseline.json`](../framework-baseline.json) (initially `published-1.0`). [`lib/changes.js`](lib/changes.js) works this out from Git when the site is built:
+
+- Only the files in `trust-framework-1.0/` count. Their caution banner and "Repository navigation" footer are removed first, so changing those is not a change to the trust framework. Changes anywhere else in the repository are ignored.
+- A file has changed only if it looks different on the site. Both versions are rendered as the site renders them. Whitespace a browser does not show, such as extra blank lines or double spaces, and HTML comments are ignored. Whitespace that matters, such as a hard line break or spacing inside code, still counts.
+- The page compares the current working draft with the baseline, and says that changes in the working draft do not by themselves change the published trust framework. If nothing has changed, it says the working draft contains no changes compared with the baseline.
+- If something has changed, the page lists the changed sections and the date the content last changed on `main`. Repository-only commits never change that date. Each changed section has a page showing the changed paragraphs and rule numbers linked to the rule:
+  - **wording changes:** removed words struck through and added words underlined;
+  - **link changes:** the link's old and new destination;
+  - **formatting changes:** marked as formatting, with the wording and links the same.
+- The changed section's own page links to its changes. Unchanged pages say nothing.
+- A file is "moved" only when it looks exactly the same in its new place.
+
+The build needs the baseline tag and the full Git history. In CI, if either is missing, the build fails rather than saying nothing has changed. A local build without them says the information is not available. The tests check the comparison against small example repositories, and the site check confirms that what the page says is consistent.
+
 ## Branding
 
 The site is not part of GOV.UK. Following the GOV.UK Design System rules for services on other domains, it uses [GOV.UK Frontend](https://frontend.design-system.service.gov.uk/) components with:
@@ -43,7 +61,7 @@ The site is not part of GOV.UK. Following the GOV.UK Design System rules for ser
 
 The [Reading site workflow](../.github/workflows/site.yml) runs on every pull request and every change to `main`:
 
-- On a pull request it builds the site, tests the rendering and checks every page. The checks cover internal links and anchors, unique IDs, heading order, image alt text, the draft banner, and an anchor and feedback route for every numbered rule. Nothing is published.
+- On a pull request it builds the site, tests the rendering and checks every page. The checks cover internal links and anchors, unique IDs, heading order, image alt text, the draft banner, an anchor and feedback route for every numbered rule, and a consistent "What's changed" page. Nothing is published.
 - On `main` it does the same and then publishes the site to GitHub Pages.
 
 Publishing needs GitHub Pages enabled for the repository, with **GitHub Actions** as the source (Settings, Pages).
@@ -67,11 +85,13 @@ python3 ../tools/check_site.py _site
 | --- | --- |
 | `eleventy.config.js` | Which files become pages, their addresses, and site-wide data |
 | `lib/markdown.js` | How the Markdown is rendered |
+| `lib/changes.js` | What has changed in the trust framework since its baseline, for the "What's changed" pages |
 | `lib/feedback.js` | Feedback link addresses, and the rules listed in each page's rule picker |
 | `_includes/layouts/` | Page templates: `base.njk` for every page, `page.njk` for pages rendered from Markdown |
 | `_data/site.js` | Site title, organisation and publication links, and part titles |
 | `pages/index.njk` | The home page |
+| `pages/changes.njk`, `pages/changes-section.njk` | The "What's changed" page, and a page for each changed section |
 | `src/site.scss` | GOV.UK Frontend settings and the site's own styles |
 | `assets/init.js` | Starts GOV.UK Frontend's JavaScript |
 | `assets/rule-feedback.js` | Shows the feedback link for the rule that is pointed to or tapped |
-| `test/` | Tests for the Markdown rendering, rule anchors and feedback links |
+| `test/` | Tests for the Markdown rendering, rule anchors, feedback links and changes |

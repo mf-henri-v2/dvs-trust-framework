@@ -11,6 +11,7 @@ This repository holds OfDIA's working draft of the UK digital verification servi
 
 - **The `main` branch is the working draft.** It holds the text OfDIA has accepted through review. It can include changes that have not been published yet.
 - **A `published-X.Y` tag marks each formally published version.** A tag points at the version of the files that matched that publication, and never moves.
+- **[`framework-baseline.json`](framework-baseline.json) names the baseline** that the reading site compares the working draft with. See [The framework baseline](#the-framework-baseline).
 - **GOV.UK is authoritative for the published version.** A change accepted into the working draft takes effect only when OfDIA publishes a new version on GOV.UK.
 
 The working draft is expected to differ from the latest published version once changes have been accepted. That difference is what the comparison below shows.
@@ -25,13 +26,23 @@ Earlier publications of the trust framework, such as gamma (0.4) and beta (0.3),
 
 ## Compare the working draft with a published version
 
-- On GitHub: [compare `published-1.0` with the working draft](https://github.com/ofdia-uk/dvs-trust-framework/compare/published-1.0...main). This shows every change since publication, file by file.
-- In a local copy of the repository:
+- On the reading site: [what's changed in the trust framework](https://ofdia-uk.github.io/dvs-trust-framework/changes/) compares only the trust framework text with the baseline. It lists the sections whose wording has changed and shows the changed words. Changes to the website, feedback forms and tools are not included.
+- On GitHub, for maintainers: [compare `published-1.0` with the working draft](https://github.com/ofdia-uk/dvs-trust-framework/compare/published-1.0...main). This shows every file that changed since publication, including the website, forms and tools.
+- In a local copy of the repository, for the trust framework text only:
 
   ```sh
   git fetch --tags
   git diff published-1.0 main -- trust-framework-1.0/
   ```
+
+## The framework baseline
+
+[`framework-baseline.json`](framework-baseline.json) names the tag that the reading site's "What's changed" page compares the working draft with. It is currently `published-1.0`.
+
+- Changing the baseline is a deliberate decision, made in a reviewed pull request, for example after a new version is published.
+- Repository-only work, such as changes to the website, feedback forms or tools, never needs a new tag.
+- The baseline must be an annotated tag in the history of `main`. If it is missing, or the build does not have the full Git history, the site build fails instead of saying nothing has changed.
+- Only the files in `trust-framework-1.0/` are compared, without their caution banner and "Repository navigation" footer. Updating those is not a change to the trust framework.
 
 ## Where the text lives
 
@@ -41,8 +52,9 @@ The sections are in [`trust-framework-1.0/`](trust-framework-1.0/README.md), one
 
 1. Through a reviewed pull request, make sure `main` holds exactly the text published on GOV.UK.
 2. A maintainer tags that commit `published-X.Y` with an annotated tag, and adds a row to the table above.
-3. If the banner needs to point to the new publication, update [`tools/caution-banner.md`](tools/caution-banner.md) and apply it. [How this repository works](ARCHITECTURE.md#caution-banner) explains how.
-4. Optionally, create a GitHub release from the tag so the published version is easy to find.
+3. If the new version should be the baseline for "What's changed", update [`framework-baseline.json`](framework-baseline.json) in a reviewed pull request.
+4. If the banner needs to point to the new publication, update [`tools/caution-banner.md`](tools/caution-banner.md) and apply it. [How this repository works](ARCHITECTURE.md#caution-banner) explains how.
+5. Optionally, create a GitHub release from the tag so the published version is easy to find.
 
 ## How the text was first added
 

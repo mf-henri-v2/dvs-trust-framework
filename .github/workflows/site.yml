@@ -36,6 +36,10 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+          # The full history and tags, so the site can compare the trust
+          # framework with its baseline tag (framework-baseline.json). The
+          # build fails if the baseline cannot be found.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
@@ -55,7 +59,7 @@ jobs:
         working-directory: docs-site
         run: npm run build
 
-      - name: Check links, anchors, IDs, headings, rule feedback and the draft banner
+      - name: Check links, anchors, IDs, headings, rule feedback, change status and the draft banner
         run: python3 tools/check_site.py docs-site/_site --path-prefix "$PATH_PREFIX"
 
       - name: Upload the site for publishing
