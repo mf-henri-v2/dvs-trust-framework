@@ -37,6 +37,17 @@ export function ruleGroups(html) {
   return groups;
 }
 
+/**
+ * A Markdown link, for the "Rule, paragraph or page" field: GitHub renders
+ * the field as Markdown, so the issue shows the text as a link instead of a
+ * long address. For example "[12.4.1.c](https://…/#section-12_4_1_c)".
+ */
+export function markdownLink(text, url) {
+  const label = text.replace(/[\\[\]]/g, "\\$&");
+  const target = url.replace(/\(/g, "%28").replace(/\)/g, "%29");
+  return `[${label}](${target})`;
+}
+
 /** The template chooser with the "Rule, paragraph or page" field filled in. */
 export function feedbackUrl(repositoryUrl, reference) {
   // encodeURIComponent writes spaces as %20, which every reader of the URL

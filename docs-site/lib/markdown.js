@@ -20,7 +20,7 @@ import path from "node:path";
 import markdownIt from "markdown-it";
 import markdownItAbbr from "markdown-it-abbr";
 import markdownItAnchor from "markdown-it-anchor";
-import { siteAddress } from "./feedback.js";
+import { markdownLink, siteAddress } from "./feedback.js";
 
 export const REPOSITORY_URL = "https://github.com/ofdia-uk/dvs-trust-framework";
 
@@ -176,7 +176,7 @@ function boldRowHeaders(md) {
 // - on trust framework pages, a block around the rule and everything that
 //   belongs to it, such as a list. The block says which rule it is, the
 //   "Rule, paragraph or page" value for a feedback issue (the rule number
-//   and a link to it), and the heading it comes under. The page's rule
+//   as a Markdown link to it), and the heading it comes under. The page's rule
 //   picker and assets/rule-feedback.js use them.
 //
 // Both are made when the site is built, so new rules get them automatically.
@@ -202,7 +202,7 @@ function rules(md) {
     const html = (content) => Object.assign(new state.Token("html_block", "", 0), { content });
     const attr = (value) => md.utils.escapeHtml(value);
     const blockStart = (number, heading) => {
-      const reference = `${number} (${siteAddress(siteUrlFor(repoPath), ruleAnchor(number))})`;
+      const reference = markdownLink(number, siteAddress(siteUrlFor(repoPath), ruleAnchor(number)));
       return html(
         `<div class="app-rule-block" data-rule="${attr(number)}" data-reference="${attr(reference)}" data-heading="${attr(heading)}">\n`,
       );

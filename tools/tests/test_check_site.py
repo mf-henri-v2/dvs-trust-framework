@@ -70,7 +70,7 @@ class SiteChecks(unittest.TestCase):
 
 def rule(number: str, anchor: str | None = None, reference: str | None = None) -> str:
     anchor = anchor or "section-" + number.replace(".", "_")
-    reference = reference or f"{number} (https://example.org/page/#{anchor})"
+    reference = reference or f"[{number}](https://example.org/page/#{anchor})"
     return (
         f'<div class="app-rule-block" data-rule="{number}" data-reference="{reference}" data-heading="12.1. Heading">'
         f'<p id="{anchor}" class="app-rule govuk-body">{number}. Text.</p></div>'
@@ -86,8 +86,8 @@ class RuleFeedbackChecks(unittest.TestCase):
     setUp = SiteChecks.setUp
     problems = SiteChecks.problems
 
-    REF_A = "12.1.a (https://example.org/page/#section-12_1_a)"
-    REF_B = "12.1.b (https://example.org/page/#section-12_1_b)"
+    REF_A = "[12.1.a](https://example.org/page/#section-12_1_a)"
+    REF_B = "[12.1.b](https://example.org/page/#section-12_1_b)"
 
     def test_rules_with_anchors_blocks_and_picker_pass(self):
         self.assertEqual(self.problems(rule("12.1.a") + rule("12.1.b") + picker(self.REF_A, self.REF_B)), [])
@@ -101,7 +101,7 @@ class RuleFeedbackChecks(unittest.TestCase):
         self.assertTrue(any("does not match its number" in p for p in problems))
 
     def test_reference_must_link_to_the_rule(self):
-        reference = "12.1.a (https://example.org/page/#section-12_9_z)"
+        reference = "[12.1.a](https://example.org/page/#section-12_9_z)"
         problems = self.problems(rule("12.1.a", reference=reference) + picker(reference))
         self.assertTrue(any("does not link to #section-12_1_a" in p for p in problems))
 

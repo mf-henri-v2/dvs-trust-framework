@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { markdownLibrary, stripRepositoryFurniture, ruleAnchor, siteUrlFor, RULE_NUMBER } from "../lib/markdown.js";
-import { feedbackUrl, siteAddress, ruleGroups, SITE_URL } from "../lib/feedback.js";
+import { feedbackUrl, markdownLink, siteAddress, ruleGroups, SITE_URL } from "../lib/feedback.js";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SECTION_12 = "trust-framework-1.0/part-3/12-service-requirements.md";
@@ -75,24 +75,31 @@ test("lists the rules for the picker under their headings (as plain text), with 
     {
       heading: "12.1. Heading with emphasis",
       rules: [
-        { rule: "12.1.a", reference: `12.1.a (${SECTION_12_URL}#section-12_1_a)` },
-        { rule: "12.1.b", reference: `12.1.b (${SECTION_12_URL}#section-12_1_b)` },
+        { rule: "12.1.a", reference: `[12.1.a](${SECTION_12_URL}#section-12_1_a)` },
+        { rule: "12.1.b", reference: `[12.1.b](${SECTION_12_URL}#section-12_1_b)` },
       ],
     },
   ]);
   assert.deepEqual(ruleGroups(render(SAMPLE, "CONTRIBUTING.md")), []);
 });
 
-test("feedback links fill in the reference, with spaces as %20", () => {
-  const href = feedbackUrl("https://github.com/ofdia-uk/dvs-trust-framework", `12.4.1.c (${siteAddress("/trust-framework-1.0/part-3/12-service-requirements/", "section-12_4_1_c")})`);
-  assert.ok(href.startsWith("https://github.com/ofdia-uk/dvs-trust-framework/issues/new/choose?reference="));
-  assert.doesNotMatch(href, /\+/);
-  assert.equal(referenceOf(href), `12.4.1.c (${SECTION_12_URL}#section-12_4_1_c)`);
+test("the reference is a Markdown link, so the issue shows the rule number or page title as the link", () => {
+  assert.equal(markdownLink("12.4.1.c", "https://example.org/page/#section-12_4_1_c"), "[12.4.1.c](https://example.org/page/#section-12_4_1_c)");
+  // Brackets in the text and parentheses in the address cannot end the link early.
+  assert.equal(markdownLink("Part [3]", "https://example.org/a_(b)/"), "[Part \\[3\\]](https://example.org/a_%28b%29/)");
 });
 
-test("the page feedback link fills in the page address", () => {
-  const href = feedbackUrl("https://github.com/ofdia-uk/dvs-trust-framework", siteAddress("/trust-framework-1.0/part-3/"));
-  assert.equal(referenceOf(href), `${SITE_URL}trust-framework-1.0/part-3/`);
+test("feedback links carry the Markdown link intact, with spaces as %20", () => {
+  const reference = markdownLink("12.4.1.c", siteAddress("/trust-framework-1.0/part-3/12-service-requirements/", "section-12_4_1_c"));
+  const href = feedbackUrl("https://github.com/ofdia-uk/dvs-trust-framework", reference);
+  assert.ok(href.startsWith("https://github.com/ofdia-uk/dvs-trust-framework/issues/new/choose?reference=%5B12.4.1.c%5D("));
+  assert.doesNotMatch(href, /\+/);
+  assert.equal(referenceOf(href), `[12.4.1.c](${SECTION_12_URL}#section-12_4_1_c)`);
+});
+
+test("the page feedback link fills in the page title as a link to the page", () => {
+  const href = feedbackUrl("https://github.com/ofdia-uk/dvs-trust-framework", markdownLink("Part 3: Rules for all service providers", siteAddress("/trust-framework-1.0/part-3/")));
+  assert.equal(referenceOf(href), `[Part 3: Rules for all service providers](${SITE_URL}trust-framework-1.0/part-3/)`);
 });
 
 // The feedback links fill in the field with id "reference". The template
@@ -164,7 +171,7 @@ for (const repoPath of SECTIONS) {
     const picker = ruleGroups(html).flatMap((group) => group.rules);
     assert.deepEqual(
       picker,
-      numbers.map((number) => ({ rule: number, reference: `${number} (${pageAddress}#${ruleAnchor(number)})` })),
+      numbers.map((number) => ({ rule: number, reference: `[${number}](${pageAddress}#${ruleAnchor(number)})` })),
       "each rule has a feedback block and picker entry with its number and a link to its anchor",
     );
     assert.equal(html.match(/<div\b/g)?.length ?? 0, html.match(/<\/div>/g)?.length ?? 0, "every block is closed");
