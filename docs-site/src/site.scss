@@ -44,6 +44,74 @@
   border-top: 2px solid govuk-functional-colour(brand);
 }
 
+// Rule-level feedback.
+//
+// A rule that is pointed to or tapped gets a subtle highlight, and one small
+// "Give feedback on 12.4.1.c" link (added by assets/rule-feedback.js). On
+// wide screens the link sits in the empty column to the right of the rule,
+// so showing it does not move the text. On narrower screens it goes under
+// the rule.
+.app-rule-block {
+  position: relative;
+}
+
+.app-rule-block--active {
+  background-color: govuk-colour("blue", $variant: "tint-95");
+  box-shadow: 0 0 0 govuk-spacing(2) govuk-colour("blue", $variant: "tint-95");
+}
+
+.app-rule-action {
+  margin-top: 0;
+
+  @include govuk-media-query($from: desktop) {
+    position: absolute;
+    // As tall as the rule, with the link at the top, so the rule and the
+    // space beside it are one area for the pointer.
+    top: 0;
+    bottom: 0;
+    left: 100%;
+    width: max-content;
+    max-width: 50%;
+    margin: 0;
+    // Padding, not a margin, so the pointer can reach the link without
+    // leaving the rule.
+    padding-left: govuk-spacing(6);
+  }
+}
+
+// The hint about pointing to or tapping a rule. Only shown when JavaScript
+// runs, because pointing and tapping need it.
+.app-rule-hint {
+  display: none;
+  color: govuk-functional-colour(secondary-text);
+
+  .govuk-frontend-supported & {
+    display: block;
+  }
+}
+
+.app-rule-picker {
+  margin-top: govuk-spacing(6);
+}
+
+.app-rule-action,
+.app-rule-picker {
+  @media print {
+    display: none;
+  }
+}
+
+// A rule opened from a direct link (#section-12_4_1_c) is highlighted, and
+// is not hidden under the top of the window.
+.app-rule {
+  scroll-margin-top: govuk-spacing(4);
+}
+
+.app-rule:target {
+  outline: govuk-spacing(2) solid govuk-colour("yellow", $variant: "tint-80");
+  background-color: govuk-colour("yellow", $variant: "tint-80");
+}
+
 // Abbreviations from section 16 show their meaning on hover.
 abbr[title] {
   text-decoration: underline dotted;

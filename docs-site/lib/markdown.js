@@ -12,12 +12,15 @@
 // - applies GOV.UK Frontend classes to the rendered HTML;
 // - uses the abbreviation definitions kept in a hidden comment in section 16
 //   to explain abbreviations, and renders the bold row headings in the
-//   section 15 table as table row headers, as the GOV.UK publication does.
+//   section 15 table as table row headers, as the GOV.UK publication does;
+// - gives each numbered rule (for example 12.4.1.c) an anchor, and marks it
+//   for rule-level feedback.
 
 import path from "node:path";
 import markdownIt from "markdown-it";
 import markdownItAbbr from "markdown-it-abbr";
 import markdownItAnchor from "markdown-it-anchor";
+import { siteAddress } from "./feedback.js";
 
 export const REPOSITORY_URL = "https://github.com/ofdia-uk/dvs-trust-framework";
 
@@ -164,6 +167,69 @@ function boldRowHeaders(md) {
   });
 }
 
+// Rules. A rule is a paragraph that starts with its number, for example
+// "12.4.1.c. Where relevant ...". The text is unchanged. Each rule gets:
+//
+// - an anchor made from its number (section-12_4_1_c), in the same form as
+//   the GOV.UK heading anchors (section-12_4_1), so a link can go straight
+//   to it;
+// - on trust framework pages, a block around the rule and everything that
+//   belongs to it, such as a list. The block says which rule it is, the
+//   "Rule, paragraph or page" value for a feedback issue (the rule number
+//   and a link to it), and the heading it comes under. The page's rule
+//   picker and assets/rule-feedback.js use them.
+//
+// Both are made when the site is built, so new rules get them automatically.
+// The tests fail if a paragraph looks like a rule but does not match.
+export const RULE_NUMBER = /^(\d+(?:\.\d+)+(?:\.[a-z]+)+)\.?(?=\s|$)/;
+
+/** The anchor for a rule number: "12.4.1.c" becomes "section-12_4_1_c". */
+export const ruleAnchor = (number) => `section-${number.replace(/\./g, "_")}`;
+
+function rules(md) {
+  md.core.ruler.push("rules", (state) => {
+    const inputPath = state.env?.page?.inputPath ?? "";
+    const repoPath = inputPath.replace(/\\/g, "/").replace(/^(\.\.\/|\.\/)+/, "");
+    const withFeedback = repoPath.startsWith("trust-framework-1.0/");
+    const plainText = (inline) =>
+      (inline.children ?? []).filter((t) => t.type === "text" || t.type === "code_inline").map((t) => t.content).join("").trim();
+    const tokens = state.tokens;
+    const topLevelParagraph = (i) => tokens[i].type === "paragraph_open" && tokens[i].level === 0;
+    const ruleAt = (i) => (topLevelParagraph(i) ? RULE_NUMBER.exec(tokens[i + 1]?.content ?? "")?.[1] : undefined);
+    // A rule ends at the next heading, rule or hidden anchor paragraph (which comes before a heading).
+    const endsRule = (i) =>
+      tokens[i].type === "heading_open" || tokens[i].type === "hr" || (topLevelParagraph(i) && (tokens[i].hidden || ruleAt(i)));
+    const html = (content) => Object.assign(new state.Token("html_block", "", 0), { content });
+    const attr = (value) => md.utils.escapeHtml(value);
+    const blockStart = (number, heading) => {
+      const reference = `${number} (${siteAddress(siteUrlFor(repoPath), ruleAnchor(number))})`;
+      return html(
+        `<div class="app-rule-block" data-rule="${attr(number)}" data-reference="${attr(reference)}" data-heading="${attr(heading)}">\n`,
+      );
+    };
+    const out = [];
+    let current = null;
+    let heading = "";
+    for (let i = 0; i < tokens.length; i++) {
+      if (current && endsRule(i)) {
+        if (withFeedback) out.push(html("</div>\n"));
+        current = null;
+      }
+      if (tokens[i].type === "heading_open") heading = plainText(tokens[i + 1]);
+      const number = ruleAt(i);
+      if (number) {
+        tokens[i].attrSet("id", ruleAnchor(number));
+        tokens[i].attrJoin("class", "app-rule");
+        if (withFeedback) out.push(blockStart(number, heading));
+        current = number;
+      }
+      out.push(tokens[i]);
+    }
+    if (current && withFeedback) out.push(html("</div>\n"));
+    state.tokens = out;
+  });
+}
+
 function govukClasses(md) {
   const addClass = (name, classes) => {
     const previous = md.renderer.rules[name] ?? ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
@@ -204,5 +270,6 @@ export const markdownLibrary = markdownIt({ html: true, linkify: false, typograp
   .use(markdownItAnchor, { slugify: githubSlug, tabIndex: false })
   .use(rewriteLinks)
   .use(bareAnchors)
+  .use(rules)
   .use(boldRowHeaders)
   .use(govukClasses);
