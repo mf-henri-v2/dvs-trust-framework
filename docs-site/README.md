@@ -39,7 +39,7 @@ The "What's changed" page (`/changes/`) tells readers whether the trust framewor
 
 - Only the files in `trust-framework-1.0/` count. Their caution banner and "Repository navigation" footer are removed first, so changing those is not a change to the trust framework. Changes anywhere else in the repository are ignored.
 - A file has changed only if it looks different on the site. Both versions are rendered as the site renders them. Whitespace a browser does not show, such as extra blank lines or double spaces, and HTML comments are ignored. Whitespace that matters, such as a hard line break or spacing inside code, still counts.
-- If nothing has changed, the page says the wording is unchanged.
+- The page compares the current working draft with the baseline, and says that changes in the working draft do not by themselves change the published trust framework. If nothing has changed, it says the working draft contains no changes compared with the baseline.
 - If something has changed, the page lists the changed sections and the date the content last changed on `main`. Repository-only commits never change that date. Each changed section has a page showing the changed paragraphs and rule numbers linked to the rule:
   - **wording changes:** removed words struck through and added words underlined;
   - **link changes:** the link's old and new destination;

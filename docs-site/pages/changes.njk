@@ -19,12 +19,14 @@ title: What's changed in the trust framework
       </div>
     {% elif changes.unchanged %}
       <div class="govuk-inset-text app-framework-status" data-framework-status="unchanged">
-        <p class="govuk-body-l govuk-!-margin-bottom-0"><strong>No changes have been made to the trust framework wording since {{ baseline.name }}.</strong></p>
+        <p class="govuk-body-l govuk-!-margin-bottom-0"><strong>The current working draft contains no changes to trust framework content compared with {{ baseline.name }}.</strong></p>
+        <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">Changes shown here are part of the working draft and do not by themselves change the published trust framework.</p>
       </div>
     {% else %}
       {% set count = changes.sections | length %}
       <div class="govuk-inset-text app-framework-status" data-framework-status="changed" data-changed-sections="{{ count }}">
-        <p class="govuk-body-l govuk-!-margin-bottom-0"><strong>The trust framework has changed in {{ count }} {{ "section" if count == 1 else "sections" }} since {{ baseline.name }}.</strong></p>
+        <p class="govuk-body-l govuk-!-margin-bottom-0"><strong>The current working draft differs from {{ baseline.name }} in {{ count }} {{ "section" if count == 1 else "sections" }}.</strong></p>
+        <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">Changes shown here are part of the working draft and do not by themselves change the published trust framework.</p>
       </div>
     {% endif %}
 
