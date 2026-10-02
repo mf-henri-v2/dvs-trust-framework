@@ -1,20 +1,20 @@
-// Tests for rule anchors and feedback links. Run with: npm test
+// Tests for rule anchors and rule-level feedback. Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { markdownLibrary, stripRepositoryFurniture, ruleAnchor } from "../lib/markdown.js";
-import { feedbackUrl, siteAddress, SITE_URL } from "../lib/feedback.js";
+import { feedbackUrl, siteAddress, ruleGroups, SITE_URL } from "../lib/feedback.js";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SECTION_12 = "trust-framework-1.0/part-3/12-service-requirements.md";
 const SECTION_11 = "trust-framework-1.0/part-3/11-operational-requirements.md";
-// Links use SITE_URL, which the Reading site workflow sets to the repository's own Pages address.
+// Addresses use SITE_URL, which the Reading site workflow sets to the repository's own Pages address.
+const SECTION_12_URL = `${SITE_URL}trust-framework-1.0/part-3/12-service-requirements/`;
 
 const render = (source, repoPath) => markdownLibrary.render(stripRepositoryFurniture(source), { page: { inputPath: `../${repoPath}` } });
-const feedbackLinks = (html) => [...html.matchAll(/<a [^>]*href="([^"]*)"[^>]*>Give feedback on ([^<]+)<\/a>/g)];
-const referenceOf = (href) => new URL(href.replace(/&amp;/g, "&")).searchParams.get("reference");
+const referenceOf = (href) => new URL(href).searchParams.get("reference");
 
 const SAMPLE = [
   "## 12. Title",
@@ -51,30 +51,35 @@ test("gives each rule an anchor without changing its text", () => {
   assert.doesNotMatch(html, /id="section-[^"]*"[^>]*>Text that is not a rule/);
 });
 
-test("adds feedback links only on the prototype page", () => {
-  assert.equal(feedbackLinks(render(SAMPLE, SECTION_11)).length, 0);
-  assert.equal(feedbackLinks(render(SAMPLE, SECTION_12)).length, 2);
-});
-
-test("puts the feedback link after everything that belongs to the rule", () => {
+test("marks rules for rule-level feedback only on the prototype page, with no visible links", () => {
+  assert.doesNotMatch(render(SAMPLE, SECTION_11), /app-rule-block/);
   const html = render(SAMPLE, SECTION_12);
-  const at = (text) => html.indexOf(text);
-  assert.ok(at("two.") < at(">Give feedback on 12.1.a<"), "after the rule's list");
-  assert.ok(at(">Give feedback on 12.1.a<") < at("12.1.b Second rule"), "before the next rule");
-  assert.ok(at(">Give feedback on 12.1.b<") < at('id="section-12_2"'), "before the next heading's anchor");
+  assert.equal(html.match(/<div class="app-rule-block"/g).length, 2);
+  assert.doesNotMatch(html, /Give feedback/);
 });
 
-test("the feedback link fills in the rule number and a direct link to the rule", () => {
-  const [[, href, label]] = feedbackLinks(render(SAMPLE, SECTION_12));
-  assert.equal(label, "12.1.a");
-  assert.ok(href.startsWith("https://github.com/ofdia-uk/dvs-trust-framework/issues/new/choose?reference="));
-  assert.equal(
-    referenceOf(href),
-    `12.1.a (${SITE_URL}trust-framework-1.0/part-3/12-service-requirements/#section-12_1_a)`,
-  );
+test("a rule's block holds everything that belongs to the rule, and nothing after it", () => {
+  const html = render(SAMPLE, SECTION_12);
+  const first = html.slice(html.indexOf('data-rule="12.1.a"'), html.indexOf('data-rule="12.1.b"'));
+  assert.match(first, /two\.<\/p>\s*<\/li>\s*<\/ul>\s*<\/div>\s*<div class="app-rule-block" $/, "ends after the rule's list");
+  const second = html.slice(html.indexOf('data-rule="12.1.b"'));
+  assert.ok(second.indexOf("</div>") < second.indexOf('id="section-12_2"'), "ends before the next heading's anchor");
 });
 
-test("section 12: every rule has one unique anchor and one feedback link", () => {
+test("lists the rules for the picker, under their headings, with the reference to fill in", () => {
+  assert.deepEqual(ruleGroups(render(SAMPLE, SECTION_12)), [
+    {
+      heading: "12.1. Heading",
+      rules: [
+        { rule: "12.1.a", reference: `12.1.a (${SECTION_12_URL}#section-12_1_a)` },
+        { rule: "12.1.b", reference: `12.1.b (${SECTION_12_URL}#section-12_1_b)` },
+      ],
+    },
+  ]);
+  assert.deepEqual(ruleGroups(render(SAMPLE, SECTION_11)), []);
+});
+
+test("section 12: every rule has one unique anchor and appears once in the picker", () => {
   const source = fs.readFileSync(path.join(REPO_ROOT, SECTION_12), "utf-8");
   const rules = source.match(/^\d+(?:\.\d+)+(?:\.[a-z]+)+\.?(?=\s)/gm).map((n) => n.replace(/\.$/, ""));
   const html = render(source, SECTION_12);
@@ -82,11 +87,19 @@ test("section 12: every rule has one unique anchor and one feedback link", () =>
   assert.equal(rules.length, 104);
   assert.deepEqual(anchors, rules.map(ruleAnchor));
   assert.equal(new Set(anchors).size, anchors.length);
-  assert.deepEqual(feedbackLinks(html).map((m) => m[2]), rules);
+  assert.deepEqual(ruleGroups(html).flatMap((group) => group.rules.map((item) => item.rule)), rules);
+  assert.equal(html.match(/<div class="app-rule-block"/g).length, 104);
+  assert.equal(html.match(/<div\b/g).length, html.match(/<\/div>/g).length, "every block is closed");
+});
+
+test("feedback links fill in the reference, with spaces as %20", () => {
+  const href = feedbackUrl("https://github.com/ofdia-uk/dvs-trust-framework", `12.4.1.c (${siteAddress("/trust-framework-1.0/part-3/12-service-requirements/", "section-12_4_1_c")})`);
+  assert.ok(href.startsWith("https://github.com/ofdia-uk/dvs-trust-framework/issues/new/choose?reference="));
+  assert.doesNotMatch(href, /\+/);
+  assert.equal(referenceOf(href), `12.4.1.c (${SECTION_12_URL}#section-12_4_1_c)`);
 });
 
 test("the page feedback link fills in the page address", () => {
   const href = feedbackUrl("https://github.com/ofdia-uk/dvs-trust-framework", siteAddress("/trust-framework-1.0/part-3/"));
-  assert.doesNotMatch(href, /\+/, "spaces are written as %20");
   assert.equal(referenceOf(href), `${SITE_URL}trust-framework-1.0/part-3/`);
 });

@@ -19,6 +19,24 @@ export function siteAddress(pageUrl, fragment = "", siteUrl = SITE_URL) {
   return fragment ? `${address}#${fragment}` : address;
 }
 
+const unescape = (value) => value.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+
+/**
+ * The rules marked for rule-level feedback in a rendered page, grouped by the
+ * heading they come under, for the page's rule picker. Empty on other pages.
+ */
+export function ruleGroups(html) {
+  const groups = [];
+  for (const [, rule, reference, heading] of String(html).matchAll(
+    /<div class="app-rule-block" data-rule="([^"]*)" data-reference="([^"]*)" data-heading="([^"]*)">/g,
+  )) {
+    const label = unescape(heading);
+    if (groups.at(-1)?.heading !== label) groups.push({ heading: label, rules: [] });
+    groups.at(-1).rules.push({ rule: unescape(rule), reference: unescape(reference) });
+  }
+  return groups;
+}
+
 /** The template chooser with the "Rule or paragraph number" field filled in. */
 export function feedbackUrl(repositoryUrl, reference) {
   // encodeURIComponent writes spaces as %20, which every reader of the URL
