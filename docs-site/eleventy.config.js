@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import nunjucks from "nunjucks";
 import { EleventyHtmlBasePlugin } from "@11ty/eleventy";
 import { markdownLibrary, stripRepositoryFurniture, firstHeading, siteUrlFor, REPOSITORY_URL } from "./lib/markdown.js";
-import { feedbackUrl, siteAddress, ruleGroups } from "./lib/feedback.js";
+import { feedbackUrl, markdownLink, siteAddress, ruleGroups } from "./lib/feedback.js";
 
 const SITE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const GOVUK_FRONTEND = path.join(SITE_DIR, "node_modules", "govuk-frontend", "dist");
@@ -87,8 +87,10 @@ export default function (eleventyConfig) {
     const match = /^trust-framework-1\.0\/part-(\d)\//.exec(repoPath ?? "");
     return match ? Number(match[1]) : null;
   });
-  // The page-level feedback link fills in the page address.
-  eleventyConfig.addFilter("pageFeedbackUrl", (pageUrl) => feedbackUrl(REPOSITORY_URL, siteAddress(pageUrl)));
+  // The page-level feedback link fills in the page title as a link to the page.
+  eleventyConfig.addFilter("pageFeedbackUrl", (pageUrl, title) =>
+    feedbackUrl(REPOSITORY_URL, markdownLink(title, siteAddress(pageUrl))),
+  );
   // The rules in a page, for its rule picker.
   eleventyConfig.addFilter("ruleGroups", ruleGroups);
   eleventyConfig.addGlobalData("repositoryUrl", REPOSITORY_URL);

@@ -139,7 +139,7 @@ def rule_problems(page: Page) -> list[str]:
         number, reference = page.rule_blocks[block]
         if anchor != "section-" + number.replace(".", "_"):
             problems.append(f"rule {number!r} has anchor {anchor!r}, which does not match its number")
-        if not (reference.startswith(f"{number} (") and reference.endswith(f"#{anchor})")):
+        if not (reference.startswith(f"[{number}](") and reference.endswith(f"#{anchor})")):
             problems.append(f"the feedback reference for rule {number!r} does not link to #{anchor}: {reference!r}")
     if len(page.rule_blocks) != len(page.rules):
         problems.append(f"{len(page.rule_blocks)} rule blocks but {len(page.rules)} rules")
