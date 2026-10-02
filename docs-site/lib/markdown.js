@@ -12,12 +12,15 @@
 // - applies GOV.UK Frontend classes to the rendered HTML;
 // - uses the abbreviation definitions kept in a hidden comment in section 16
 //   to explain abbreviations, and renders the bold row headings in the
-//   section 15 table as table row headers, as the GOV.UK publication does.
+//   section 15 table as table row headers, as the GOV.UK publication does;
+// - gives each numbered rule (for example 12.4.1.c) an anchor, and on
+//   section 12 only (a prototype) adds a feedback link after each rule.
 
 import path from "node:path";
 import markdownIt from "markdown-it";
 import markdownItAbbr from "markdown-it-abbr";
 import markdownItAnchor from "markdown-it-anchor";
+import { feedbackUrl, siteAddress } from "./feedback.js";
 
 export const REPOSITORY_URL = "https://github.com/ofdia-uk/dvs-trust-framework";
 
@@ -164,6 +167,59 @@ function boldRowHeaders(md) {
   });
 }
 
+// A rule is a paragraph that starts with its number, for example
+// "12.4.1.c. Where relevant ...". Each rule gets an anchor made from its
+// number (section-12_4_1_c), in the same form as the GOV.UK heading anchors
+// (section-12_4_1), so a link can go straight to it. The text is unchanged.
+const RULE_NUMBER = /^(\d+(?:\.\d+)+(?:\.[a-z]+)+)\.?(?=\s|$)/;
+
+/** The anchor for a rule number: "12.4.1.c" becomes "section-12_4_1_c". */
+export const ruleAnchor = (number) => `section-${number.replace(/\./g, "_")}`;
+
+// Prototype: a "Give feedback on 12.4.1.c" link after each rule, on these
+// pages only. It goes after everything that belongs to the rule, such as a
+// list, and before the next rule or heading.
+const RULE_FEEDBACK_PAGES = new Set(["trust-framework-1.0/part-3/12-service-requirements.md"]);
+
+function ruleAnchors(md) {
+  md.core.ruler.push("rule_anchors", (state) => {
+    const inputPath = state.env?.page?.inputPath ?? "";
+    const repoPath = inputPath.replace(/\\/g, "/").replace(/^(\.\.\/|\.\/)+/, "");
+    const withFeedback = RULE_FEEDBACK_PAGES.has(repoPath);
+    const tokens = state.tokens;
+    const topLevelParagraph = (i) => tokens[i].type === "paragraph_open" && tokens[i].level === 0;
+    const ruleAt = (i) => (topLevelParagraph(i) ? RULE_NUMBER.exec(tokens[i + 1]?.content ?? "")?.[1] : undefined);
+    // A rule ends at the next heading, rule or hidden anchor paragraph (which comes before a heading).
+    const endsRule = (i) =>
+      tokens[i].type === "heading_open" || tokens[i].type === "hr" || (topLevelParagraph(i) && (tokens[i].hidden || ruleAt(i)));
+    const feedbackLink = (number) => {
+      const href = feedbackUrl(REPOSITORY_URL, `${number} (${siteAddress(siteUrlFor(repoPath), ruleAnchor(number))})`);
+      const token = new state.Token("html_block", "", 0);
+      token.content =
+        `<p class="govuk-body-s app-rule-feedback"><a class="govuk-link govuk-link--muted" href="${md.utils.escapeHtml(href)}">` +
+        `Give feedback on ${number}</a></p>\n`;
+      return token;
+    };
+    const out = [];
+    let current = null;
+    for (let i = 0; i < tokens.length; i++) {
+      if (current && endsRule(i)) {
+        if (withFeedback) out.push(feedbackLink(current));
+        current = null;
+      }
+      const number = ruleAt(i);
+      if (number) {
+        tokens[i].attrSet("id", ruleAnchor(number));
+        tokens[i].attrJoin("class", "app-rule");
+        current = number;
+      }
+      out.push(tokens[i]);
+    }
+    if (current && withFeedback) out.push(feedbackLink(current));
+    state.tokens = out;
+  });
+}
+
 function govukClasses(md) {
   const addClass = (name, classes) => {
     const previous = md.renderer.rules[name] ?? ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
@@ -204,5 +260,6 @@ export const markdownLibrary = markdownIt({ html: true, linkify: false, typograp
   .use(markdownItAnchor, { slugify: githubSlug, tabIndex: false })
   .use(rewriteLinks)
   .use(bareAnchors)
+  .use(ruleAnchors)
   .use(boldRowHeaders)
   .use(govukClasses);

@@ -44,6 +44,28 @@
   border-top: 2px solid govuk-functional-colour(brand);
 }
 
+// Prototype (section 12 only): the feedback link after each rule. It is
+// small and in the secondary text colour, and sits close under the rule, so
+// it does not read as part of the rule's wording.
+.app-rule-feedback {
+  margin-top: govuk-spacing(-3);
+
+  @media print {
+    display: none;
+  }
+}
+
+// A rule opened from a direct link (#section-12_4_1_c) is highlighted, and
+// is not hidden under the top of the window.
+.app-rule {
+  scroll-margin-top: govuk-spacing(4);
+}
+
+.app-rule:target {
+  outline: govuk-spacing(2) solid govuk-colour("yellow", $variant: "tint-80");
+  background-color: govuk-colour("yellow", $variant: "tint-80");
+}
+
 // Abbreviations from section 16 show their meaning on hover.
 abbr[title] {
   text-decoration: underline dotted;
