@@ -23,7 +23,7 @@ You need a free GitHub account. You do not need to know how GitHub works, and yo
    - **Other suggestion**: anything else, such as an idea for guidance or examples
 3. Fill in the form and submit it.
 
-If you are using the [reading site](https://ofdia-uk.github.io/dvs-trust-framework/), you can start from the page instead. Point to or tap a rule to give feedback on it, or use the feedback links at the bottom of the page. The form opens with the rule or page filled in, and you can change it before you submit.
+If you are using the [reading site](https://ofdia-uk.github.io/dvs-trust-framework/), you can start from the page instead. Point to or tap a rule to give feedback on it. At the bottom of the page you can also choose a rule from a list, or give feedback on the whole page. The form opens with the rule or page filled in, and you can change it before you submit.
 
 Please keep each issue to one point where you can. Check the [open issues](https://github.com/ofdia-uk/dvs-trust-framework/issues) first, as someone may have raised the same point. You can add a comment to their issue instead.
 

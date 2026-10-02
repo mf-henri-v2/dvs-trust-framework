@@ -43,6 +43,7 @@ If you cannot tell whether a change alters meaning, treat it as a policy change.
 
 - Each numbered section is one Markdown file. Each part of the publication is a folder.
 - Invisible HTML anchors such as `<a id="section-12_4"></a>` keep the anchor IDs used on GOV.UK, so cross-references work. A reference to another file is a relative link to that file and anchor.
+- A numbered rule is a paragraph that starts with its number, such as `12.4.1.c.`. The reading site gives each one an anchor made from its number, such as `#section-12_4_1_c`, when it is built. These anchors are not in the Markdown, so do not add them by hand.
 - The example boxes in the GOV.UK publication are shown as quoted blocks. The heading in each box is one level below the heading of the section it sits in.
 - The abbreviation definitions from the GOV.UK publication (`*[DVS]: Digital Verification Service`) are kept unchanged in an HTML comment at the end of section 16. GitHub does not display them. The reading site uses them to explain abbreviations, as GOV.UK does. Keep the comment, and add any new definition inside it.
 - The row headings in the section 15 table are bold cells. On GOV.UK and the reading site they are table row headers.
@@ -88,13 +89,36 @@ The **Reading site** workflow also runs on every pull request and every change t
 
 | Check | Confirms | Does not confirm |
 | --- | --- | --- |
-| Build and check the site | The site builds, its rendering tests pass, and every page has working internal links and anchors, ordered headings, image alt text and the draft banner | That the site is published, or anything about the policy content |
+| Build and check the site | The site builds and its tests pass. Every page has working internal links and anchors, unique IDs, ordered headings, image alt text and the draft banner. Every numbered rule has an anchor and a feedback route. The "What's changed" page reports a consistent status | That the site is published, or anything about the policy content |
 
 On a pull request, GitHub runs the workflows and tools as changed by that pull request. A passing check therefore does not show that the checks themselves were left intact. Review changes to `.github/` and `tools/` with that in mind.
 
 ## Reading site
 
 The [reading site](https://ofdia-uk.github.io/dvs-trust-framework/) shows the working draft to people who would rather not use GitHub. It renders the Markdown files directly and keeps no copy of the text. Changes to `main` are published automatically. Pull requests are built and checked but never published. The site is not part of GOV.UK, so it uses the GOV.UK Design System's Generic header and none of the GOV.UK branding. [`docs-site/README.md`](docs-site/README.md) explains how it works and how to run it.
+
+Besides the text itself, the site generates two things when it is built:
+
+- **Rule-level feedback.** Readers can give feedback on a specific rule by pointing to or tapping it, or with the rule picker at the bottom of the page. Either way, an issue form opens with the rule number and a link to the rule filled in. The page-level "Give feedback on GitHub" link remains the general route.
+- **"What's changed" (`/changes/`).** The page compares the working draft with the configured baseline and shows any changes to the trust framework content. See [Trust framework changes and repository history](#trust-framework-changes-and-repository-history).
+
+## Trust framework changes and repository history
+
+These are kept separate.
+
+- **Repository history** is everything in Git: changes to the text, and to the website, issue forms, workflows and tools. The GitHub commit history and comparison views show all of it. Nothing is hidden or rewritten.
+- **Trust framework changes** are changes to the content of the files under `trust-framework-1.0/`: their wording, links and formatting. The site's "What's changed" page shows only these. It compares the working draft with the tag named in [`framework-baseline.json`](framework-baseline.json), currently `published-1.0`. The caution banner, the navigation footer and whitespace that does not change how the text looks do not count.
+
+Repository-only work never needs a tag. Changing the baseline is a deliberate decision, made in a reviewed pull request. [Versions](VERSIONS.md#the-framework-baseline) explains when.
+
+To compare, the site build needs the baseline tag and the full Git history, which the Reading site workflow fetches. The build fails rather than saying nothing has changed in any of these cases:
+
+- the tag is missing;
+- the tag is not an annotated tag;
+- the tag is not in the history of `main`;
+- the history is incomplete.
+
+A fork needs the baseline tag too. Forks do not receive new tags automatically, so after the baseline moves, fetch the tag into the fork.
 
 ## Issue labels
 
@@ -103,9 +127,12 @@ The issue forms apply these labels. They must exist in the repository for the fo
 | Label | Applied by |
 | --- | --- |
 | `triage` | Every issue form, until a maintainer has reviewed the issue |
-| `policy-feedback` | Policy feedback |
-| `clarity` | Unclear wording |
-| `correction` | Correction |
+| `proposed change` | Policy feedback |
+| `draft clarity` | Unclear wording |
+| `correction` | Correction, and Broken link or navigation problem |
 | `accessibility` | Accessibility problem |
-| `links-and-navigation` | Broken link or navigation problem |
 | `suggestion` | Other suggestion |
+
+Maintainers add other labels when they triage an issue, such as the `area:` and `theme:` labels.
+
+Every issue form has an optional "Rule, paragraph or page" field (`id: reference`). The reading site's feedback links fill it in, through GitHub's template chooser, with a link to the rule or page. Keep the field, with that ID, in every form.
