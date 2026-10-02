@@ -56,7 +56,7 @@ The site is not part of GOV.UK. Following the GOV.UK Design System rules for ser
 
 The [Reading site workflow](../.github/workflows/site.yml) runs on every pull request and every change to `main`:
 
-- On a pull request it builds the site, tests the rendering and checks every page. The checks cover internal links and anchors, unique IDs, heading order, image alt text, the draft banner, and an anchor and feedback route for every numbered rule. Nothing is published.
+- On a pull request it builds the site, tests the rendering and checks every page. The checks cover internal links and anchors, unique IDs, heading order, image alt text, the draft banner, an anchor and feedback route for every numbered rule, and a consistent "What's changed" page. Nothing is published.
 - On `main` it does the same and then publishes the site to GitHub Pages.
 
 Publishing needs GitHub Pages enabled for the repository, with **GitHub Actions** as the source (Settings, Pages).

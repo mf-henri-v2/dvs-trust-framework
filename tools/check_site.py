@@ -11,6 +11,10 @@ For every HTML page it checks that:
 - every numbered rule has an anchor made from its number and a feedback
   route: it sits in a rule block whose feedback reference is the rule
   number and a link to that anchor, and it is in the page's rule picker;
+- exactly one page (/changes/) says whether the trust framework wording has
+  changed since its baseline, and what it says is consistent: "unchanged"
+  lists no changed sections and no section page says it has changed;
+  "changed" lists as many sections as it says;
 - the page has a language, a title and exactly one <h1>, and its heading
   levels do not skip (for example from <h2> straight to <h4>);
 - every image has an alt attribute;
@@ -55,6 +59,11 @@ class Page(HTMLParser):
         self.rules: list[tuple[str, int | None]] = []
         self.picker_options: list[str] = []
         self._open_block: int | None = None
+        # Changes to the trust framework since its baseline.
+        self.framework_status: str | None = None
+        self.changed_sections_declared: int | None = None
+        self.changed_section_links = 0
+        self.section_changed_notice = False
         self._in_picker = False
 
     def handle_starttag(self, tag, attrs):
@@ -70,6 +79,14 @@ class Page(HTMLParser):
         if tag == "p" and "app-rule" in classes:
             self.rules.append((a.get("id", ""), self._open_block))
             self._open_block = None
+        if a.get("data-framework-status"):
+            self.framework_status = a["data-framework-status"]
+            if a.get("data-changed-sections", "").isdigit():
+                self.changed_sections_declared = int(a["data-changed-sections"])
+        if tag == "a" and "app-changed-section" in classes:
+            self.changed_section_links += 1
+        if "app-section-changed" in classes:
+            self.section_changed_notice = True
         if tag == "select" and a.get("id") == "rule-feedback-reference":
             self._in_picker = True
         if tag == "option" and self._in_picker and a.get("value"):
@@ -148,6 +165,32 @@ def rule_problems(page: Page) -> list[str]:
     return problems
 
 
+def change_problems(pages: dict[Path, Page], site: Path) -> list[str]:
+    """Problems with what the site says about changes to the trust framework."""
+    reporting = [(path, page) for path, page in pages.items() if page.framework_status]
+    if not reporting:
+        return ["no page says whether the trust framework wording has changed (the /changes/ page is missing)"]
+    if len(reporting) > 1:
+        return [f"{len(reporting)} pages say whether the trust framework wording has changed; expected only /changes/"]
+    path, page = reporting[0]
+    rel = path.relative_to(site.resolve()).as_posix()
+    status, listed = page.framework_status, page.changed_section_links
+    notices = sorted(p.relative_to(site.resolve()).as_posix() for p, other in pages.items() if other.section_changed_notice)
+    if status == "unavailable":
+        return [f"{rel}: the trust framework could not be compared with its baseline, so the site cannot say what has changed"]
+    if status == "unchanged":
+        problems = []
+        if listed:
+            problems.append(f"{rel}: says the wording is unchanged but lists {listed} changed section(s)")
+        problems.extend(f"{notice}: says the section has changed, but {rel} says the wording is unchanged" for notice in notices)
+        return problems
+    if status == "changed":
+        if not listed or listed != page.changed_sections_declared:
+            return [f"{rel}: says {page.changed_sections_declared} section(s) changed but lists {listed}"]
+        return []
+    return [f"{rel}: unknown trust framework change status {status!r}"]
+
+
 def check(site: Path, prefix: str) -> list[str]:
     problems: list[str] = []
     pages = {p.resolve(): parse(p) for p in site.rglob("*.html")}
@@ -186,6 +229,7 @@ def check(site: Path, prefix: str) -> list[str]:
                 ids = pages[target.resolve()].ids if target.resolve() in pages else parse(target).ids
                 if fragment not in ids:
                     problems.append(f"{rel}: missing anchor: {href}")
+    problems.extend(change_problems(pages, site))
     return problems
 
 
@@ -205,7 +249,7 @@ def main() -> int:
     if problems:
         print(f"\n{len(problems)} problem(s) found in {pages} pages.")
         return 1
-    print(f"{pages} pages checked: links, anchors, IDs, headings, images, status banner and rule feedback are all in order.")
+    print(f"{pages} pages checked: links, anchors, IDs, headings, images, status banner, rule feedback and the change status are all in order.")
     return 0
 
 

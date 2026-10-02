@@ -23,11 +23,16 @@ def page(body: str, title: str = "Page") -> str:
     return f'<!DOCTYPE html><html lang="en"><head><title>{title}</title></head><body>{BANNER}<h1>{title}</h1>{body}</body></html>'
 
 
+UNCHANGED = '<div data-framework-status="unchanged"><p>No changes.</p></div>'
+
+
 class SiteChecks(unittest.TestCase):
     def setUp(self):
         self.site = Path(tempfile.mkdtemp())
         (self.site / "section").mkdir()
         (self.site / "section" / "index.html").write_text(page('<h2 id="part-a">Part A</h2>'), encoding="utf-8")
+        (self.site / "changes").mkdir()
+        (self.site / "changes" / "index.html").write_text(page(UNCHANGED), encoding="utf-8")
 
     def problems(self, body: str, prefix: str = "/") -> list[str]:
         (self.site / "index.html").write_text(page(body), encoding="utf-8")
@@ -108,6 +113,44 @@ class RuleFeedbackChecks(unittest.TestCase):
     def test_picker_must_list_every_rule(self):
         problems = self.problems(rule("12.1.a") + rule("12.1.b") + picker(self.REF_A))
         self.assertTrue(any("rule picker does not list exactly" in p for p in problems))
+
+
+
+class ChangeStatusChecks(unittest.TestCase):
+    setUp = SiteChecks.setUp
+    problems = SiteChecks.problems
+
+    def changes(self, body: str) -> list[str]:
+        (self.site / "changes" / "index.html").write_text(page(body), encoding="utf-8")
+        return self.problems("")
+
+    def test_unchanged_with_nothing_listed_passes(self):
+        self.assertEqual(self.changes(UNCHANGED), [])
+
+    def test_the_changes_page_is_required(self):
+        (self.site / "changes" / "index.html").unlink()
+        self.assertTrue(any("the /changes/ page is missing" in p for p in self.problems("")))
+
+    def test_only_one_page_may_report_the_status(self):
+        self.assertTrue(any("expected only /changes/" in p for p in self.problems(UNCHANGED)))
+
+    def test_unavailable_comparison_fails(self):
+        self.assertTrue(any("could not be compared" in p for p in self.changes('<div data-framework-status="unavailable"></div>')))
+
+    def test_unchanged_must_not_list_changed_sections(self):
+        body = UNCHANGED + '<a class="govuk-link app-changed-section" href="/section/">Section</a>'
+        self.assertTrue(any("says the wording is unchanged but lists 1" in p for p in self.changes(body)))
+
+    def test_unchanged_must_not_mark_a_section_as_changed(self):
+        notice = '<div class="govuk-inset-text app-section-changed">This section has changed.</div>'
+        (self.site / "section" / "index.html").write_text(page(notice), encoding="utf-8")
+        self.assertTrue(any("section/index.html: says the section has changed" in p for p in self.problems("")))
+
+    def test_changed_must_list_as_many_sections_as_it_says(self):
+        link = '<a class="govuk-link app-changed-section" href="/section/">Section</a>'
+        self.assertEqual(self.changes(f'<div data-framework-status="changed" data-changed-sections="1"></div>{link}'), [])
+        problems = self.changes(f'<div data-framework-status="changed" data-changed-sections="2"></div>{link}')
+        self.assertTrue(any("says 2 section(s) changed but lists 1" in p for p in problems))
 
 
 if __name__ == "__main__":
