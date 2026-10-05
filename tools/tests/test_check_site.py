@@ -11,13 +11,15 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from urllib.parse import quote
 
 TOOLS = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(TOOLS))
 
 import check_site as cs  # noqa: E402
 
-BANNER = '<div class="govuk-phase-banner">Draft</div>'
+CHOOSER = "https://github.com/example/repo/issues/new/choose"
+BANNER = f'<div class="govuk-phase-banner"><p>Draft. <a href="https://www.gov.uk/">Published version</a> or <a href="{CHOOSER}">give feedback</a>.</p></div>'
 
 
 def page(body: str, title: str = "Page") -> str:
@@ -88,6 +90,37 @@ class SiteChecks(unittest.TestCase):
     def test_draft_banner_is_required(self):
         (self.site / "index.html").write_text(page("").replace(BANNER, ""), encoding="utf-8")
         self.assertTrue(any("draft status banner is missing" in p for p in cs.check(self.site, "/")))
+
+    def test_draft_banner_needs_a_feedback_link(self):
+        (self.site / "index.html").write_text(page("").replace(f' or <a href="{CHOOSER}">give feedback</a>', ""), encoding="utf-8")
+        self.assertIn("index.html: the draft status banner should have one link to give feedback, found 0", cs.check(self.site, "/"))
+
+    def framework_page(self, reference: str | None) -> list[str]:
+        href = CHOOSER + (f"?reference={quote(reference)}" if reference is not None else "")
+        folder = self.site / "trust-framework-1.0" / "part-3" / "12-service-requirements"
+        folder.mkdir(parents=True)
+        (folder / "index.html").write_text(page("").replace(f'href="{CHOOSER}"', f'href="{href}"'), encoding="utf-8")
+        return [p for p in cs.check(self.site, "/") if "draft status banner" in p]
+
+    def test_banner_feedback_on_a_framework_page_fills_in_that_page(self):
+        self.assertEqual(self.framework_page("[12. Service requirements](https://example.org/site/trust-framework-1.0/part-3/12-service-requirements/)"), [])
+
+    def test_banner_feedback_on_a_framework_page_must_not_fill_in_another_page_or_a_rule(self):
+        for reference in (
+            None,
+            "[11. Operational requirements](https://example.org/site/trust-framework-1.0/part-3/11-operational-requirements/)",
+            "[12.4.1.c](https://example.org/site/trust-framework-1.0/part-3/12-service-requirements/#section-12_4_1_c)",
+        ):
+            with self.subTest(reference=reference):
+                self.setUp()
+                self.assertEqual(len(self.framework_page(reference)), 1)
+
+    def test_banner_feedback_elsewhere_fills_in_nothing(self):
+        (self.site / "index.html").write_text(page("").replace(f'href="{CHOOSER}"', f'href="{CHOOSER}?reference=%5BHome%5D(https%3A%2F%2Fexample.org%2F)"'), encoding="utf-8")
+        self.assertIn(
+            "index.html: the draft status banner's feedback link fills in a reference on a page that is not part of the trust framework: '[Home](https://example.org/)'",
+            cs.check(self.site, "/"),
+        )
 
     def test_repository_material_must_not_leak(self):
         self.assertTrue(any("leaked" in p for p in self.problems("<p>Repository navigation</p>")))
