@@ -130,5 +130,9 @@
 
 {% block bodyEnd %}
   {{ super() }}
-  {% if (content | ruleGroups) | length %}<script type="module" src="/assets/rule-actions.js"></script>{% endif %}
+  {% if (content | ruleGroups) | length %}
+    {# Separate scripts, so the rule actions still work if the picker's filter does not load, and the other way round. #}
+    <script type="module" src="/assets/rule-actions.js"></script>
+    <script type="module" src="/assets/rule-picker-filter.js"></script>
+  {% endif %}
 {% endblock %}

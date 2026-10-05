@@ -10,7 +10,8 @@
 //   goes to one, that rule's actions are shown after it, so pressing Tab
 //   from the rule reaches them. Focus is never moved there.
 // - Keyboard and screen readers can also use the rule picker (a form near the
-//   end of the page), which gets copy buttons for the chosen rule.
+//   end of the page), which gets copy buttons for the chosen rule. Its
+//   filter is in assets/rule-picker-filter.js.
 //
 // There is only ever one set of actions, moved to the rule in use. While
 // focus is in it, while a copy is in progress, or while the "copy it
@@ -274,7 +275,13 @@ if (picker && blocks.length) {
     const block = event.target.closest(".app-rule-block");
     selected = block && block !== selected ? block : null;
     selectedByLink = false;
-    if (selected) select.value = selected.dataset.reference;
+    if (selected) {
+      const { reference } = selected.dataset;
+      // The picker's filter may be hiding this rule: if so, ask for the whole list first.
+      if (![...select.options].some((option) => option.value === reference)) select.dispatchEvent(new Event("app-rule-picker-reset"));
+      select.value = reference;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    }
     update();
   });
 
