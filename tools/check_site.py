@@ -19,7 +19,9 @@ For every HTML page it checks that:
 - the page has a language, a title and exactly one <h1>, and its heading
   levels do not skip (for example from <h2> straight to <h4>);
 - every image has an alt attribute;
-- the draft status banner is present;
+- the draft status banner is present, with a link to give feedback: on a
+  trust framework page it fills in that page as the "Rule, paragraph or
+  page", and on any other page it fills in nothing;
 - in the site navigation, at most one link is marked as current, and a link
   to the page itself is marked aria-current="page";
 - no repository-only material (the caution banner markers or the
@@ -48,7 +50,7 @@ import os
 import sys
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 EXTERNAL_SCHEMES = {"http", "https", "mailto", "tel"}
 
@@ -63,6 +65,9 @@ class Page(HTMLParser):
         self.lang = ""
         self.has_title = False
         self.has_phase_banner = False
+        # The links in the draft status banner, and how deep in <div>s it starts.
+        self.banner_links: list[str] = []
+        self._banner_depth: int | None = None
         self.text: list[str] = []
         self.duplicate_ids: list[str] = []
         # Rule-level feedback: (rule number, feedback reference) for each rule
@@ -98,6 +103,10 @@ class Page(HTMLParser):
         if "data-search-fallback" in a:
             self.search_fallback_hidden = "hidden" in a
             self._fallback_depth = self._div_depth
+        if tag == "div" and "govuk-phase-banner" in (a.get("class") or "").split():
+            self._banner_depth = self._div_depth
+        if tag == "a" and self._banner_depth is not None and a.get("href"):
+            self.banner_links.append(a["href"])
         if tag == "a" and self._fallback_depth is not None and a.get("href"):
             self.search_fallback_links += 1
         if tag == "ul" and "govuk-service-navigation__list" in (a.get("class") or "").split():
@@ -154,6 +163,8 @@ class Page(HTMLParser):
         if tag == "div":
             if self._fallback_depth == self._div_depth:
                 self._fallback_depth = None
+            if self._banner_depth == self._div_depth:
+                self._banner_depth = None
             self._div_depth -= 1
 
     def handle_data(self, data):
@@ -207,6 +218,24 @@ def rule_problems(page: Page) -> list[str]:
     if page.rule_blocks and page.picker_options != [reference for _, reference in page.rule_blocks]:
         problems.append("the rule picker does not list exactly the rules on the page, in order")
     return problems
+
+
+def banner_problems(rel: str, page: Page) -> list[str]:
+    """Problems with the draft status banner's link to give feedback."""
+    if not page.has_phase_banner:
+        return ["draft status banner is missing"]
+    choosers = [href for href in page.banner_links if urlsplit(href).path.endswith("/issues/new/choose")]
+    if len(choosers) != 1:
+        return [f"the draft status banner should have one link to give feedback, found {len(choosers)}"]
+    references = parse_qs(urlsplit(choosers[0]).query).get("reference", [])
+    if not rel.startswith("trust-framework-1.0/"):
+        return [f"the draft status banner's feedback link fills in a reference on a page that is not part of the trust framework: {references[0]!r}"] if references else []
+    # The page's own address, as a Markdown link: "[12. Service requirements](https://…/12-service-requirements/)".
+    own = "/" + rel.removesuffix("index.html")
+    target = references[0].rpartition("](")[2].removesuffix(")") if references and references[0].startswith("[") else ""
+    if not target or not urlsplit(target).path.endswith(own) or urlsplit(target).fragment:
+        return [f"the draft status banner's feedback link should fill in this page ({own}), not {references[0] if references else 'nothing'!r}"]
+    return []
 
 
 def change_problems(pages: dict[Path, Page], site: Path) -> list[str]:
@@ -333,8 +362,7 @@ def check(site: Path, prefix: str) -> list[str]:
                 break
         if page.images_without_alt:
             problems.append(f"{rel}: {page.images_without_alt} image(s) without an alt attribute")
-        if not page.has_phase_banner:
-            problems.append(f"{rel}: draft status banner is missing")
+        problems.extend(f"{rel}: {problem}" for problem in banner_problems(rel, page))
         for duplicate in sorted(set(page.duplicate_ids)):
             problems.append(f"{rel}: more than one element has id {duplicate!r}")
         problems.extend(f"{rel}: {problem}" for problem in rule_problems(page))
