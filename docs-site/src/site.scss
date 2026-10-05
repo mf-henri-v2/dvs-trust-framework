@@ -100,6 +100,8 @@
   margin-top: govuk-spacing(8);
   padding-top: govuk-spacing(4);
   border-top: 2px solid govuk-functional-colour(brand);
+  // Apart from the Previous and Next links that follow.
+  @include govuk-responsive-margin(8, "bottom");
 }
 
 // Rule-level feedback.
@@ -224,6 +226,7 @@
 }
 
 .app-rule-picker__buttons {
+  @include govuk-font($size: 16);
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
