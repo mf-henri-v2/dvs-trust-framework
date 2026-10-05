@@ -152,6 +152,80 @@ abbr[title] {
   overflow-wrap: anywhere;
 }
 
+// Search (/search/, and the search form on the home page).
+.app-search-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: govuk-spacing(2);
+  align-items: flex-start;
+}
+
+.app-search-form__input {
+  flex: 1 1 15em;
+}
+
+.app-search-form__button {
+  margin-bottom: 0;
+}
+
+// Search needs JavaScript. The page says so, with a way to find a rule
+// without it, until its scripts can run.
+.app-search-with-script {
+  display: none;
+}
+
+.govuk-frontend-supported {
+  .app-search-no-script {
+    display: none;
+  }
+
+  .app-search-with-script {
+    display: block;
+  }
+}
+
+.app-search-exact {
+  margin-bottom: govuk-spacing(6);
+  padding: govuk-spacing(3) 0 govuk-spacing(1) govuk-spacing(4);
+  border-left: 5px solid govuk-functional-colour(brand);
+
+  .govuk-button {
+    margin-bottom: govuk-spacing(3);
+  }
+}
+
+.app-search-results {
+  margin-top: 0;
+}
+
+.app-search-result {
+  margin-bottom: govuk-spacing(4);
+  padding-bottom: govuk-spacing(2);
+  border-bottom: 1px solid govuk-functional-colour(border);
+}
+
+.app-search-result__title {
+  margin-bottom: govuk-spacing(1);
+}
+
+.app-search-result__context {
+  margin-bottom: govuk-spacing(1);
+  color: govuk-functional-colour(secondary-text);
+}
+
+.app-search-result__excerpt {
+  margin-bottom: govuk-spacing(2);
+  overflow-wrap: anywhere;
+}
+
+// Matching words in a result. Bold as well as highlighted, so they do not
+// depend on colour alone.
+.app-search-mark {
+  background-color: govuk-colour("yellow", $variant: "tint-80");
+  color: inherit;
+  font-weight: bold;
+}
+
 // A glossary term opened from a search result (#term-identity-repair).
 .app-term {
   scroll-margin-top: govuk-spacing(4);

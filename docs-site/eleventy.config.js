@@ -12,6 +12,8 @@ import { EleventyHtmlBasePlugin } from "@11ty/eleventy";
 import { markdownLibrary, stripRepositoryFurniture, firstHeading, siteUrlFor, REPOSITORY_URL } from "./lib/markdown.js";
 import { feedbackUrl, markdownLink, siteAddress, ruleGroups } from "./lib/feedback.js";
 import { frameworkChanges } from "./lib/changes.js";
+import { buildSearchIndex } from "./lib/search.js";
+import site from "./_data/site.js";
 
 const SITE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const GOVUK_FRONTEND = path.join(SITE_DIR, "node_modules", "govuk-frontend", "dist");
@@ -67,6 +69,8 @@ export default function (eleventyConfig) {
     "../media": "media",
     "assets/init.js": "assets/init.js",
     "assets/rule-feedback.js": "assets/rule-feedback.js",
+    "assets/search.js": "assets/search.js",
+    "assets/search-core.js": "assets/search-core.js",
     [path.join("node_modules", "govuk-frontend", "dist", "govuk", "govuk-frontend.min.js")]: "assets/govuk-frontend.min.js",
   });
 
@@ -100,10 +104,22 @@ export default function (eleventyConfig) {
       text: text.replace(/<[^>]+>/g, "").trim(),
     })),
   );
-  eleventyConfig.addFilter("partOf", (repoPath) => {
+  const partOf = (repoPath) => {
     const match = /^trust-framework-1\.0\/part-(\d)\//.exec(repoPath ?? "");
     return match ? Number(match[1]) : null;
-  });
+  };
+  eleventyConfig.addFilter("partOf", partOf);
+  // The search index (/search-index.json), made from the trust framework sections. See lib/search.js.
+  eleventyConfig.addFilter("searchIndex", (sections) =>
+    JSON.stringify(
+      buildSearchIndex(
+        sections.map((item) => {
+          const part = site.parts.find((each) => each.number === partOf(item.data.repoPath));
+          return { url: item.url, title: item.data.title, repoPath: item.data.repoPath, part: part && `Part ${part.number}: ${part.title}` };
+        }),
+      ),
+    ),
+  );
   // The page-level feedback link fills in the page title as a link to the page.
   eleventyConfig.addFilter("pageFeedbackUrl", (pageUrl, title) =>
     feedbackUrl(REPOSITORY_URL, markdownLink(title, siteAddress(pageUrl))),
