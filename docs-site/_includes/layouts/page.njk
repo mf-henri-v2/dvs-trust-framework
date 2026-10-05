@@ -46,22 +46,33 @@
       {# Subsections, and the headings under each, so long sections can be navigated. See lib/contents.js. #}
       {% set contents = content | pageContents %}
       {% if (contents | contentsLength) >= 3 %}
+        {#
+          Closed at first, so the section's text starts straight away. A
+          native <details> (GOV.UK Details), so it opens and closes without
+          JavaScript, and following a link inside it leaves it open.
+        #}
         <nav class="app-contents-list" aria-labelledby="on-this-page">
-          <h2 class="govuk-heading-s" id="on-this-page">On this page</h2>
-          <ul class="govuk-list app-contents-list__list">
-            {% for item in contents %}
-              <li>
-                <a class="govuk-link" href="#{{ item.id }}">{{ item.text }}</a>
-                {% if item.children | length %}
-                  <ul class="govuk-list app-contents-list__sublist">
-                    {% for child in item.children %}
-                      <li><a class="govuk-link" href="#{{ child.id }}">{{ child.text }}</a></li>
-                    {% endfor %}
-                  </ul>
-                {% endif %}
-              </li>
-            {% endfor %}
-          </ul>
+          <details class="govuk-details app-contents-list__details">
+            <summary class="govuk-details__summary">
+              <span class="govuk-details__summary-text" id="on-this-page">On this page</span>
+            </summary>
+            <div class="govuk-details__text">
+              <ul class="govuk-list app-contents-list__list">
+                {% for item in contents %}
+                  <li>
+                    <a class="govuk-link" href="#{{ item.id }}">{{ item.text }}</a>
+                    {% if item.children | length %}
+                      <ul class="govuk-list app-contents-list__sublist">
+                        {% for child in item.children %}
+                          <li><a class="govuk-link" href="#{{ child.id }}">{{ child.text }}</a></li>
+                        {% endfor %}
+                      </ul>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          </details>
         </nav>
       {% endif %}
 

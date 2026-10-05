@@ -64,7 +64,7 @@ Search matches words only. It does not know synonyms, so "ID" does not find "ide
 
 ## Navigating a page
 
-Each page with three or more headings starts with an "On this page" list ([`lib/contents.js`](lib/contents.js)). It lists the page's subsections, such as 12.4, with the headings under each, such as 12.4.1, in a smaller indented list. It goes no deeper and never lists rules, so section 12, the longest, has about 30 links in 9 groups. Headings in example boxes are left out. Each link uses the heading's existing id. The list is ordinary links in a `<nav>`, at the top of the page, and works without JavaScript. There is no sticky sidebar: the text is in one narrow column, and a list at the top works the same on every screen.
+Each page with three or more headings starts with an "On this page" list ([`lib/contents.js`](lib/contents.js)). It lists the page's subsections, such as 12.4, with the headings under each, such as 12.4.1, in a smaller indented list. It goes no deeper and never lists rules, so section 12, the longest, has about 30 links in 9 groups. Headings in example boxes are left out. Each link uses the heading's existing id. The list is in a `<nav>` at the top of the page, inside an "On this page" disclosure (GOV.UK Details, a native `<details>`) that is closed when the page opens, so the section's text starts straight away. It opens and closes without JavaScript, and following a link in it leaves it open. There is no sticky sidebar: the text is in one narrow column, and a disclosure at the top works the same on every screen.
 
 ## Rule links and references
 

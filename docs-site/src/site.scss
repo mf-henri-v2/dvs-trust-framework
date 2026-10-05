@@ -65,10 +65,15 @@
   font-family: monospace;
 }
 
+// "On this page" is a GOV.UK Details disclosure, closed at first, with a
+// rule under it to separate it from the section's text.
 .app-contents-list {
   margin-bottom: govuk-spacing(6);
-  padding-bottom: govuk-spacing(2);
   border-bottom: 1px solid govuk-functional-colour(border);
+}
+
+.app-contents-list__details {
+  margin-bottom: govuk-spacing(4);
 }
 
 // "On this page": subsections, with the headings under each in a smaller,
