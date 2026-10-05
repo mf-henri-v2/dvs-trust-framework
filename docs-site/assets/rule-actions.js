@@ -301,7 +301,8 @@ if (picker && blocks.length) {
   window.addEventListener("pageshow", followLink);
   followLink();
 
-  // The rule picker: copy buttons for the chosen rule.
+  // The rule picker: copy buttons for the chosen rule, and an error, with
+  // focus moved to the dropdown, when there is no chosen rule to act on.
   const group = picker.querySelector(".govuk-form-group");
   const chosenRule = () => {
     const block = blocks.find((each) => each.dataset.reference === select.value);
@@ -315,18 +316,20 @@ if (picker && blocks.length) {
     select.classList.remove("govuk-select--error");
     select.setAttribute("aria-describedby", "rule-feedback-hint");
   };
-  const showPickerError = () => {
+  const showPickerError = (message) => {
     if (!pickerError) {
-      pickerError = element("p", "govuk-error-message", hiddenText("Error: "), "Choose a rule to copy its link or reference");
+      pickerError = element("p", "govuk-error-message");
       pickerError.id = "rule-feedback-error";
       group.classList.add("govuk-form-group--error");
       select.classList.add("govuk-select--error");
       select.setAttribute("aria-describedby", "rule-feedback-hint rule-feedback-error");
       select.before(pickerError);
     }
-    announce("Choose a rule to copy its link or reference");
+    pickerError.replaceChildren(hiddenText("Error: "), message);
+    // The dropdown is described by the error, so moving focus there reads it out.
+    select.focus();
   };
-  const pickerButtons = copyButtons(chosenRule, showPickerError);
+  const pickerButtons = copyButtons(chosenRule, () => showPickerError("Choose a rule to copy its link or reference"));
   const pickerDone = element("span", "app-copy-done");
   pickerDone.setAttribute("aria-hidden", "true");
   nameButtons(pickerButtons, "the chosen rule");
@@ -342,6 +345,11 @@ if (picker && blocks.length) {
     clearPickerError();
     pickerDone.textContent = "";
     closeManual();
+  });
+  picker.addEventListener("submit", (event) => {
+    if (select.value) return;
+    event.preventDefault();
+    showPickerError("Choose a rule to give feedback on");
   });
 
   // Pointing and tapping need this script, so the hint about them is shown only now.
