@@ -218,9 +218,14 @@ if (picker && blocks.length) {
     if (!action.contains(event.relatedTarget)) setTimeout(update);
   });
 
-  /** The rule the page address points to, if any. */
+  /** The rule the page address points to, if any. A fragment that is not a rule, or not valid, points to none. */
   const linkedBlock = () => {
-    const id = decodeURIComponent(window.location.hash.slice(1));
+    let id;
+    try {
+      id = decodeURIComponent(window.location.hash.slice(1));
+    } catch {
+      return null; // for example "#%"
+    }
     const target = id ? document.getElementById(id) : null;
     return target?.classList.contains("app-rule") ? target.closest(".app-rule-block") : null;
   };
