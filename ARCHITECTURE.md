@@ -99,7 +99,7 @@ The [reading site](https://ofdia-uk.github.io/dvs-trust-framework/) shows the wo
 
 Besides the text itself, the site generates three things when it is built:
 
-- **Rule-level feedback, links and references.** Readers can give feedback on a specific rule by pointing to or tapping it, or with the rule picker at the bottom of the page. Either way, an issue form opens with the rule number and a link to the rule filled in. The page-level "Give feedback on GitHub" link remains the general route. The same places offer "Copy link" and "Copy reference" (for example `Rule 12.4.1.c`). A link to a rule highlights the whole rule.
+- **Rule-level feedback, links and references.** Readers can give feedback on a specific rule by pointing to or tapping it, or with the rule picker at the bottom of the page, which can be filtered by rule number or heading. Either way, an issue form opens with the rule number and a link to the rule filled in. The page-level "Give feedback on GitHub" link remains the general route. The same places offer "Copy link" and "Copy reference" (for example `Rule 12.4.1.c`). A link to a rule highlights the whole rule.
 - **Search (`/search/`).** Readers can search for words, or type a rule or section number such as 12.4.1.c to go straight to it. The search index is made from the trust framework Markdown, so it never needs updating by hand. Search needs JavaScript; if it cannot run, the page explains how to find a rule and links to every section.
 - **"What's changed" (`/changes/`).** The page compares the working draft with the configured baseline and shows any changes to the trust framework content. See [Trust framework changes and repository history](#trust-framework-changes-and-repository-history).
 
