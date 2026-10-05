@@ -38,6 +38,26 @@
   border-bottom: 1px solid govuk-functional-colour(border);
 }
 
+// "On this page": subsections, with the headings under each in a smaller,
+// indented list, so a long section such as 12 reads as groups rather than
+// one long list.
+.app-contents-list__list > li {
+  margin-bottom: govuk-spacing(2);
+}
+
+.app-contents-list__sublist {
+  @include govuk-font($size: 16);
+  margin-top: govuk-spacing(1);
+  margin-bottom: 0;
+  margin-left: govuk-spacing(1);
+  padding-left: govuk-spacing(3);
+  border-left: 1px solid govuk-functional-colour(border);
+
+  > li {
+    margin-bottom: govuk-spacing(1);
+  }
+}
+
 .app-page-actions {
   margin-top: govuk-spacing(8);
   padding-top: govuk-spacing(4);

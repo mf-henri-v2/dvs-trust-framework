@@ -43,13 +43,23 @@
         <p class="govuk-body"><a class="govuk-link govuk-visually-hidden-focusable" href="#rule-feedback">Skip to give feedback on a specific rule</a></p>
       {% endif %}
 
-      {% set headings = content | pageHeadings %}
-      {% if headings | length >= 3 %}
+      {# Subsections, and the headings under each, so long sections can be navigated. See lib/contents.js. #}
+      {% set contents = content | pageContents %}
+      {% if (contents | contentsLength) >= 3 %}
         <nav class="app-contents-list" aria-labelledby="on-this-page">
           <h2 class="govuk-heading-s" id="on-this-page">On this page</h2>
-          <ul class="govuk-list">
-            {% for heading in headings %}
-              <li><a class="govuk-link" href="#{{ heading.id }}">{{ heading.text }}</a></li>
+          <ul class="govuk-list app-contents-list__list">
+            {% for item in contents %}
+              <li>
+                <a class="govuk-link" href="#{{ item.id }}">{{ item.text }}</a>
+                {% if item.children | length %}
+                  <ul class="govuk-list app-contents-list__sublist">
+                    {% for child in item.children %}
+                      <li><a class="govuk-link" href="#{{ child.id }}">{{ child.text }}</a></li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              </li>
             {% endfor %}
           </ul>
         </nav>

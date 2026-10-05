@@ -13,6 +13,7 @@ import { markdownLibrary, stripRepositoryFurniture, firstHeading, siteUrlFor, RE
 import { feedbackUrl, markdownLink, siteAddress, ruleGroups } from "./lib/feedback.js";
 import { frameworkChanges } from "./lib/changes.js";
 import { buildSearchIndex } from "./lib/search.js";
+import { pageContents, contentsLength } from "./lib/contents.js";
 import site from "./_data/site.js";
 
 const SITE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -97,13 +98,9 @@ export default function (eleventyConfig) {
       .sort((a, b) => sectionNumber(a) - sectionNumber(b)),
   );
 
-  // Headings for an "On this page" list: <h2 id="...">text</h2> in rendered content.
-  eleventyConfig.addFilter("pageHeadings", (html) =>
-    [...String(html).matchAll(/<h2[^>]*\bid="([^"]+)"[^>]*>([\s\S]*?)<\/h2>/g)].map(([, id, text]) => ({
-      id,
-      text: text.replace(/<[^>]+>/g, "").trim(),
-    })),
-  );
+  // The "On this page" list: the page's subsections and the headings under them. See lib/contents.js.
+  eleventyConfig.addFilter("pageContents", pageContents);
+  eleventyConfig.addFilter("contentsLength", contentsLength);
   const partOf = (repoPath) => {
     const match = /^trust-framework-1\.0\/part-(\d)\//.exec(repoPath ?? "");
     return match ? Number(match[1]) : null;
