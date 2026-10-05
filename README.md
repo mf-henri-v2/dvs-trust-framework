@@ -65,7 +65,7 @@ Anyone with a GitHub account can give feedback. You do not need to suggest new w
 2. [Open a new issue](https://github.com/ofdia-uk/dvs-trust-framework/issues/new/choose) and choose the kind of feedback you want to give.
 3. Fill in the form and submit it.
 
-[How to give feedback](CONTRIBUTING.md) explains each kind of feedback and what happens after you submit it.
+[How to give feedback](CONTRIBUTING.md) explains how to create a GitHub account, each kind of feedback and what happens after you submit it.
 
 ## See how the trust framework changes
 
