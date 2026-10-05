@@ -12,9 +12,11 @@ The site has no copy of the text. [Eleventy](https://www.11ty.dev/) renders the 
 - It uses the first heading as the page title, and keeps the other headings in order without skipping levels.
 - It points links between Markdown files at the matching site pages. Links to other repository files go to GitHub.
 - It uses the abbreviation definitions kept in a hidden comment in section 16 to explain abbreviations on hover. It renders the bold row headings in the section 15 table as table row headers. Both match GOV.UK.
-- It gives each numbered rule (for example 12.4.1.c) an anchor made from its number, such as `#section-12_4_1_c`, and marks it for rule-level feedback. See [Feedback links](#feedback-links).
+- It gives each numbered rule (for example 12.4.1.c) an anchor made from its number, such as `#section-12_4_1_c`, and marks it for rule-level feedback and copying. See [Feedback links](#feedback-links) and [Rule links and references](#rule-links-and-references).
 - It gives each glossary term in section 16 an anchor made from the term, such as `#term-identity-repair`, so that search results can link to it.
 - It applies GOV.UK Frontend styles.
+
+Each page with three or more headings starts with an "On this page" list. See [Navigating a page](#navigating-a-page).
 
 The site also has a search page and a "What's changed" page. See [Search](#search) and [Changes to the trust framework](#changes-to-the-trust-framework).
 
@@ -25,10 +27,10 @@ The Markdown is never processed by a template engine, so nothing in the policy t
 Every feedback link opens the issue template chooser on GitHub, so the reader still picks the kind of feedback. GitHub passes the "Rule, paragraph or page" field (id `reference`) through the chooser to the form the reader picks, and every form has that field. The reader can change it before submitting. GitHub fills in text fields from a link, but not dropdowns, so the reader still chooses the section. The links add no labels; each form's labels apply as before.
 
 - **Page:** the "Give feedback on GitHub" link at the bottom of each trust framework page fills in the page title as a link to the page. It works without JavaScript.
-- **Rule:** pointing to a rule highlights it and shows a "Give feedback on 12.4.1.c" link beside it. On a touch screen, tapping a rule does the same, and tapping it again or elsewhere clears it. The link fills in the rule number as a Markdown link to the rule, for example `[12.4.1.c](https://…/12-service-requirements/#section-12_4_1_c)`, so the issue shows "12.4.1.c" as a link. There is only one such link at a time, so the rules add nothing to the Tab order. [`assets/rule-feedback.js`](assets/rule-feedback.js) does this.
+- **Rule:** pointing to a rule highlights it and shows a "Give feedback on 12.4.1.c" link beside it, with the copy buttons described in [Rule links and references](#rule-links-and-references). On a touch screen, tapping a rule does the same, and tapping it again or elsewhere clears it. The link fills in the rule number as a Markdown link to the rule, for example `[12.4.1.c](https://…/12-service-requirements/#section-12_4_1_c)`, so the issue shows "12.4.1.c" as a link. There is only one set of these at a time, so the rules add nothing to the Tab order. [`assets/rule-actions.js`](assets/rule-actions.js) does this.
 - **Rule picker:** for keyboard and screen reader users, and without JavaScript, each page with rules has a "Give feedback on a specific rule" form at the bottom, with a dropdown of its rules grouped by heading. A skip link to it appears at the top of the page when it has keyboard focus.
 
-A link to a rule anchor highlights the rule in pale yellow.
+A link to a rule anchor highlights the whole rule in pale yellow: its first paragraph and everything that belongs to it, such as its list, table or figures, and nothing of the next rule. The highlight uses the rule's block, so it follows the same rule boundaries as feedback (`ruleBoundaries` in `lib/markdown.js`). It is done in CSS (`:has()` and `:target`), so it needs no JavaScript and follows links on the page and Back and Forward. Browsers without `:has()` highlight the first paragraph only. For example, 4.1.b includes its table (Figure 1), 4.3.c its Figures 2 and 3, and 12.9.b its Figure 4, because they belong to those rules. Every block holds exactly one rule, and the site check fails otherwise.
 
 All of this is made when the site is built. A rule is a paragraph that starts with its number, such as "12.4.1.c." or "12.4.1.c", so new rules get an anchor and feedback route automatically. The Markdown is not changed. The tests fail if a paragraph looks like a numbered rule but the renderer does not recognise it, if a rule is missing its anchor or feedback route, or if an ID is repeated. The site check does the same on the built pages.
 
@@ -60,6 +62,27 @@ Nothing needs updating by hand. New or renumbered rules, headings and glossary t
 
 Search matches words only. It does not know synonyms, so "ID" does not find "identity". To change how results are ranked, edit `search` in `assets/search-core.js` and check the example searches in `test/search.test.js`.
 
+## Navigating a page
+
+Each page with three or more headings starts with an "On this page" list ([`lib/contents.js`](lib/contents.js)). It lists the page's subsections, such as 12.4, with the headings under each, such as 12.4.1, in a smaller indented list. It goes no deeper and never lists rules, so section 12, the longest, has about 30 links in 9 groups. Headings in example boxes are left out. Each link uses the heading's existing id. The list is ordinary links in a `<nav>`, at the top of the page, and works without JavaScript. There is no sticky sidebar: the text is in one narrow column, and a list at the top works the same on every screen.
+
+## Rule links and references
+
+With a rule's feedback link, readers get two buttons:
+
+- **Copy link** copies the address of the rule: the page being read, at the rule's anchor, for example `https://ofdia-uk.github.io/dvs-trust-framework/trust-framework-1.0/part-3/12-service-requirements/#section-12_4_1_c`. It is made from the page's own address, so it is right at `/`, under `/dvs-trust-framework/` and in a fork, and it drops any query.
+- **Copy reference** copies the rule's citation, for example `Rule 12.4.1.c`.
+
+The number comes from the rule block's `data-rule` and the anchor from the id of the rule's own paragraph, as the renderer wrote them, never from the rule's position. [`assets/rule-links.js`](assets/rule-links.js) works these out, and the tests check them.
+
+- **Who can use them.** The buttons appear with the feedback link for the rule that is pointed to or tapped, and for the rule the page was opened at or a link on the page went to. Pressing Tab from a linked rule reaches them, after any links in the rule itself. Focus is never moved there on its own. The rule picker at the bottom of the page also gets copy buttons for the chosen rule, so a keyboard user can copy any rule. The buttons' names include the rule, for example "Copy link to rule 12.4.1.c".
+- **Staying put.** While focus is in the buttons, while a copy is in progress, or while the "copy it yourself" box is open, they stay with their rule: pointing to another rule does not move them. Each copy works out its rule and text when the button is pressed.
+- **After copying.** Focus stays on the button, "Link copied" or "Reference copied" appears, and a status message is announced.
+- **If copying does not work** (some browsers or settings block it), a labelled box with the link or reference appears, focused and selected, with instructions to copy it by hand. It stays until Escape is pressed (which returns focus to the button), another copy is made, or the reader clicks elsewhere.
+- **Without JavaScript** there are no copy buttons. The rule anchors, the highlighting and the picker's GitHub route still work.
+
+None of this text is in the search index, which is made from the Markdown.
+
 ## Changes to the trust framework
 
 The "What's changed" page (`/changes/`) tells readers whether the trust framework has changed since its baseline, the tag named in [`framework-baseline.json`](../framework-baseline.json) (initially `published-1.0`). [`lib/changes.js`](lib/changes.js) works this out from Git when the site is built:
@@ -76,6 +99,10 @@ The "What's changed" page (`/changes/`) tells readers whether the trust framewor
 
 The build needs the baseline tag and the full Git history. In CI, if either is missing, the build fails rather than saying nothing has changed. A local build without them says the information is not available. The tests check the comparison against small example repositories, and the site check confirms that what the page says is consistent.
 
+## Header
+
+The header is GOV.UK Frontend's Generic header (the OfDIA name) and Service navigation (the service name and five links). The service name is too long to share a row with the links, so from tablet width up the service name has its own row and the links sit in a row below it, aligned with it. This is set in [`src/site.scss`](src/site.scss); only the vertical padding is reduced, not text or touch target sizes. On narrow screens GOV.UK's own Menu button shows and hides the links; without JavaScript the links are always shown. The link for the page being read is marked `aria-current="page"` (for example Search on the search page), and the link for the part of the site it is in is marked `aria-current="true"` (Contents on a section page).
+
 ## Branding
 
 The site is not part of GOV.UK. Following the GOV.UK Design System rules for services on other domains, it uses [GOV.UK Frontend](https://frontend.design-system.service.gov.uk/) components with:
@@ -88,7 +115,7 @@ The site is not part of GOV.UK. Following the GOV.UK Design System rules for ser
 
 The [Reading site workflow](../.github/workflows/site.yml) runs on every pull request and every change to `main`:
 
-- On a pull request it builds the site, tests the rendering and checks every page. The checks cover internal links, form addresses and anchors, unique IDs, heading order, image alt text, the draft banner, an anchor and feedback route for every numbered rule, a consistent "What's changed" page, a search index whose every entry links to an anchor that exists, and a search page that offers another way to find a rule until search has started. Nothing is published.
+- On a pull request it builds the site, tests the rendering and checks every page. The checks cover internal links, form addresses and anchors, unique IDs, heading order, image alt text, the draft banner, an anchor and feedback route for every numbered rule, a consistent "What's changed" page, a search index whose every entry links to an anchor that exists, a search page that offers another way to find a rule until search has started, and a site navigation that marks the current page with `aria-current="page"`. Nothing is published.
 - On `main` it does the same and then publishes the site to GitHub Pages.
 
 Publishing needs GitHub Pages enabled for the repository, with **GitHub Actions** as the source (Settings, Pages).
@@ -114,6 +141,7 @@ python3 ../tools/check_site.py _site
 | `lib/markdown.js` | How the Markdown is rendered |
 | `lib/changes.js` | What has changed in the trust framework since its baseline, for the "What's changed" pages |
 | `lib/feedback.js` | Feedback link addresses, and the rules listed in each page's rule picker |
+| `lib/contents.js` | The "On this page" list |
 | `lib/search.js` | The search index, made from the trust framework sections |
 | `_includes/layouts/` | Page templates: `base.njk` for every page, `page.njk` for pages rendered from Markdown |
 | `_data/site.js` | Site title, organisation and publication links, and part titles |
@@ -123,6 +151,7 @@ python3 ../tools/check_site.py _site
 | `_includes/components/search-form.njk` | The search form, used on the home page and the search page |
 | `src/site.scss` | GOV.UK Frontend settings and the site's own styles |
 | `assets/init.js` | Starts GOV.UK Frontend's JavaScript |
-| `assets/rule-feedback.js` | Shows the feedback link for the rule that is pointed to or tapped |
+| `assets/rule-actions.js` | Shows the feedback link and copy buttons for the rule in use, and adds copy buttons to the rule picker |
+| `assets/rule-links.js` | What "Copy link" and "Copy reference" copy |
 | `assets/search-core.js`, `assets/search.js` | Search: finding rules and passages, and showing the results |
-| `test/` | Tests for the Markdown rendering, rule anchors, feedback links, changes and search |
+| `test/` | Tests for the Markdown rendering, rule anchors, feedback links, rule links, the "On this page" list, changes and search |
