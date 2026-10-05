@@ -10,7 +10,8 @@
 //   goes to one, that rule's actions are shown after it, so pressing Tab
 //   from the rule reaches them. Focus is never moved there.
 // - Keyboard and screen readers can also use the rule picker (a form near the
-//   end of the page), which gets copy buttons for the chosen rule.
+//   end of the page), which gets copy buttons for the chosen rule. Its
+//   filter is in assets/rule-picker-filter.js.
 //
 // There is only ever one set of actions, moved to the rule in use. While
 // focus is in it, while a copy is in progress, or while the "copy it
@@ -274,7 +275,13 @@ if (picker && blocks.length) {
     const block = event.target.closest(".app-rule-block");
     selected = block && block !== selected ? block : null;
     selectedByLink = false;
-    if (selected) select.value = selected.dataset.reference;
+    if (selected) {
+      const { reference } = selected.dataset;
+      // The picker's filter may be hiding this rule: if so, ask for the whole list first.
+      if (![...select.options].some((option) => option.value === reference)) select.dispatchEvent(new Event("app-rule-picker-reset"));
+      select.value = reference;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    }
     update();
   });
 
@@ -294,7 +301,8 @@ if (picker && blocks.length) {
   window.addEventListener("pageshow", followLink);
   followLink();
 
-  // The rule picker: copy buttons for the chosen rule.
+  // The rule picker: copy buttons for the chosen rule, and an error, with
+  // focus moved to the dropdown, when there is no chosen rule to act on.
   const group = picker.querySelector(".govuk-form-group");
   const chosenRule = () => {
     const block = blocks.find((each) => each.dataset.reference === select.value);
@@ -308,18 +316,20 @@ if (picker && blocks.length) {
     select.classList.remove("govuk-select--error");
     select.setAttribute("aria-describedby", "rule-feedback-hint");
   };
-  const showPickerError = () => {
+  const showPickerError = (message) => {
     if (!pickerError) {
-      pickerError = element("p", "govuk-error-message", hiddenText("Error: "), "Choose a rule to copy its link or reference");
+      pickerError = element("p", "govuk-error-message");
       pickerError.id = "rule-feedback-error";
       group.classList.add("govuk-form-group--error");
       select.classList.add("govuk-select--error");
       select.setAttribute("aria-describedby", "rule-feedback-hint rule-feedback-error");
       select.before(pickerError);
     }
-    announce("Choose a rule to copy its link or reference");
+    pickerError.replaceChildren(hiddenText("Error: "), message);
+    // The dropdown is described by the error, so moving focus there reads it out.
+    select.focus();
   };
-  const pickerButtons = copyButtons(chosenRule, showPickerError);
+  const pickerButtons = copyButtons(chosenRule, () => showPickerError("Choose a rule to copy its link or reference"));
   const pickerDone = element("span", "app-copy-done");
   pickerDone.setAttribute("aria-hidden", "true");
   nameButtons(pickerButtons, "the chosen rule");
@@ -335,6 +345,11 @@ if (picker && blocks.length) {
     clearPickerError();
     pickerDone.textContent = "";
     closeManual();
+  });
+  picker.addEventListener("submit", (event) => {
+    if (select.value) return;
+    event.preventDefault();
+    showPickerError("Choose a rule to give feedback on");
   });
 
   // Pointing and tapping need this script, so the hint about them is shown only now.

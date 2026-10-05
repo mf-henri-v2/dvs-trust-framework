@@ -100,6 +100,8 @@
   margin-top: govuk-spacing(8);
   padding-top: govuk-spacing(4);
   border-top: 2px solid govuk-functional-colour(brand);
+  // Apart from the Previous and Next links that follow.
+  @include govuk-responsive-margin(8, "bottom");
 }
 
 // Rule-level feedback.
@@ -224,10 +226,40 @@
 }
 
 .app-rule-picker__buttons {
+  @include govuk-font($size: 16);
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: govuk-spacing(2) govuk-spacing(4);
+}
+
+// The picker's filter (assets/rule-picker-filter.js), between the form's hint
+// and its dropdown. Its left border, like a GOV.UK conditional reveal, shows
+// that it is part of choosing a rule, not a question of its own.
+.app-rule-filter {
+  margin-bottom: govuk-spacing(4);
+  padding-left: govuk-spacing(3);
+  border-left: $govuk-border-width-narrow solid govuk-functional-colour(border);
+}
+
+.app-rule-filter__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: govuk-spacing(2) govuk-spacing(4);
+}
+
+.app-rule-filter__clear {
+  @include govuk-font($size: 16);
+}
+
+.app-rule-filter__status {
+  margin-top: govuk-spacing(2);
+  margin-bottom: 0;
+
+  &:empty {
+    display: none;
+  }
 }
 
 .app-rule-action,

@@ -71,6 +71,8 @@ export default function (eleventyConfig) {
     "assets/init.js": "assets/init.js",
     "assets/rule-actions.js": "assets/rule-actions.js",
     "assets/rule-links.js": "assets/rule-links.js",
+    "assets/rule-filter.js": "assets/rule-filter.js",
+    "assets/rule-picker-filter.js": "assets/rule-picker-filter.js",
     "assets/search.js": "assets/search.js",
     "assets/search-core.js": "assets/search-core.js",
     [path.join("node_modules", "govuk-frontend", "dist", "govuk", "govuk-frontend.min.js")]: "assets/govuk-frontend.min.js",
