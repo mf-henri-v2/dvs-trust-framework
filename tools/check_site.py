@@ -20,6 +20,8 @@ For every HTML page it checks that:
   levels do not skip (for example from <h2> straight to <h4>);
 - every image has an alt attribute;
 - the draft status banner is present;
+- in the site navigation, at most one link is marked as current, and a link
+  to the page itself is marked aria-current="page";
 - no repository-only material (the caution banner markers or the
   "Repository navigation" footer) has leaked into the page.
 
@@ -83,6 +85,9 @@ class Page(HTMLParser):
         self.search_fallback_links = 0
         self._div_depth = 0
         self._fallback_depth: int | None = None
+        # The site navigation: (href, aria-current) for each of its links.
+        self.nav_links: list[tuple[str, str | None]] = []
+        self._in_nav_list = False
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -95,6 +100,10 @@ class Page(HTMLParser):
             self._fallback_depth = self._div_depth
         if tag == "a" and self._fallback_depth is not None and a.get("href"):
             self.search_fallback_links += 1
+        if tag == "ul" and "govuk-service-navigation__list" in (a.get("class") or "").split():
+            self._in_nav_list = True
+        if tag == "a" and self._in_nav_list and a.get("href"):
+            self.nav_links.append((a["href"], a.get("aria-current")))
         if a.get("id"):
             if a["id"] in self.ids:
                 self.duplicate_ids.append(a["id"])
@@ -140,6 +149,8 @@ class Page(HTMLParser):
     def handle_endtag(self, tag):
         if tag == "select":
             self._in_picker = False
+        if tag == "ul":
+            self._in_nav_list = False
         if tag == "div":
             if self._fallback_depth == self._div_depth:
                 self._fallback_depth = None
@@ -273,6 +284,19 @@ def search_problems(pages: dict[Path, Page], site: Path) -> list[str]:
     return problems
 
 
+def navigation_problems(site: Path, path: Path, page: Page, prefix: str) -> list[str]:
+    """Problems with how the site navigation marks the current page."""
+    problems = []
+    marked = [href for href, current in page.nav_links if current]
+    if len(marked) > 1:
+        problems.append(f"more than one navigation link is marked as current: {', '.join(marked)}")
+    for href, current in page.nav_links:
+        target, _ = resolve(site, path, href, prefix)
+        if target is not None and target.resolve() == path and current != "page":
+            problems.append(f"the navigation link to this page ({href}) is not marked aria-current=\"page\"")
+    return problems
+
+
 def search_page_problems(pages: dict[Path, Page], site: Path) -> list[str]:
     """Problems with what the search page shows before its script runs."""
     path = (site / "search" / "index.html").resolve()
@@ -314,6 +338,7 @@ def check(site: Path, prefix: str) -> list[str]:
         for duplicate in sorted(set(page.duplicate_ids)):
             problems.append(f"{rel}: more than one element has id {duplicate!r}")
         problems.extend(f"{rel}: {problem}" for problem in rule_problems(page))
+        problems.extend(f"{rel}: {problem}" for problem in navigation_problems(site.resolve(), path, page, prefix))
         for leaked in ("caution-banner:", "Repository navigation"):
             if leaked in text:
                 problems.append(f"{rel}: repository-only text leaked into the page: {leaked!r}")
@@ -349,7 +374,7 @@ def main() -> int:
     if problems:
         print(f"\n{len(problems)} problem(s) found in {pages} pages.")
         return 1
-    print(f"{pages} pages checked: links, anchors, IDs, headings, images, status banner, rule feedback, the change status, the search index and the search fallback are all in order.")
+    print(f"{pages} pages checked: links, anchors, IDs, headings, images, status banner, rule feedback, the change status, the search index, the search fallback and the navigation are all in order.")
     return 0
 
 
