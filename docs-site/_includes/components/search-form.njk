@@ -1,0 +1,17 @@
+{#
+  The search form: a rule number or words. It sends the query to the search
+  page as ?q=..., so it works the same from any page. Search results need
+  JavaScript; without it the search page explains how to find a rule instead.
+#}
+{% macro searchForm(params) %}
+<form class="app-search-form" action="/search/" method="get" role="search" data-search-form>
+  <div class="govuk-form-group">
+    <label class="govuk-label {{ params.labelClasses }}" for="{{ params.id }}">{{ params.label }}</label>
+    <div class="govuk-hint" id="{{ params.id }}-hint">For example, 12.4.1.c or identity repair</div>
+    <div class="app-search-form__row">
+      <input class="govuk-input app-search-form__input" id="{{ params.id }}" name="q" type="search" value="" autocomplete="off" spellcheck="false" aria-describedby="{{ params.id }}-hint">
+      <button type="submit" class="govuk-button app-search-form__button" data-module="govuk-button">Search</button>
+    </div>
+  </div>
+</form>
+{% endmacro %}

@@ -67,6 +67,13 @@ test("leaves bold cells alone in tables with more than one column", () => {
   assert.equal(html.includes('scope="row"'), false);
 });
 
+test("gives each glossary term an anchor made from the term, without changing the text", () => {
+  const html = render("## T\n\n| Term | Definition |\n| --- | --- |\n| Identity repair | A process. |\n| Identity repair | Again. |\n");
+  assert.match(html, /<tr id="term-identity-repair" class="app-term govuk-table__row">\s*<td class="govuk-table__cell">Identity repair<\/td>/);
+  assert.match(html, /<tr id="term-identity-repair-2" /);
+  assert.doesNotMatch(render("## T\n\n| Name | Value |\n| --- | --- |\n| A | B |\n"), /<tr id=/);
+});
+
 test("uses the abbreviation definitions kept in a hidden comment", () => {
   const source =
     "## T\n\nA DVS is a service.\n\n" +
