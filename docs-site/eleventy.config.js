@@ -69,7 +69,8 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({
     "../media": "media",
     "assets/init.js": "assets/init.js",
-    "assets/rule-feedback.js": "assets/rule-feedback.js",
+    "assets/rule-actions.js": "assets/rule-actions.js",
+    "assets/rule-links.js": "assets/rule-links.js",
     "assets/search.js": "assets/search.js",
     "assets/search-core.js": "assets/search-core.js",
     [path.join("node_modules", "govuk-frontend", "dist", "govuk", "govuk-frontend.min.js")]: "assets/govuk-frontend.min.js",

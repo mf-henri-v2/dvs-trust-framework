@@ -67,10 +67,10 @@
 // Rule-level feedback.
 //
 // A rule that is pointed to or tapped gets a subtle highlight, and one small
-// "Give feedback on 12.4.1.c" link (added by assets/rule-feedback.js). On
-// wide screens the link sits in the empty column to the right of the rule,
-// so showing it does not move the text. On narrower screens it goes under
-// the rule.
+// set of actions (added by assets/rule-actions.js): "Give feedback on
+// 12.4.1.c", "Copy link" and "Copy reference". On wide screens they sit in
+// the empty column to the right of the rule, so showing them does not move
+// the text. On narrower screens they go under the rule.
 .app-rule-block {
   position: relative;
 }
@@ -82,10 +82,11 @@
 
 .app-rule-action {
   margin-top: 0;
+  margin-bottom: govuk-spacing(4);
 
   @include govuk-media-query($from: desktop) {
     position: absolute;
-    // As tall as the rule, with the link at the top, so the rule and the
+    // As tall as the rule, with the actions at the top, so the rule and the
     // space beside it are one area for the pointer.
     top: 0;
     bottom: 0;
@@ -93,25 +94,99 @@
     width: max-content;
     max-width: 50%;
     margin: 0;
-    // Padding, not a margin, so the pointer can reach the link without
+    // Padding, not a margin, so the pointer can reach the actions without
     // leaving the rule.
     padding-left: govuk-spacing(6);
   }
 }
 
-// The hint about pointing to or tapping a rule. Only shown when JavaScript
-// runs, because pointing and tapping need it.
-.app-rule-hint {
-  display: none;
-  color: govuk-functional-colour(secondary-text);
+// One action per line beside the rule; in a row, wrapping, under it.
+.app-rule-action__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 govuk-spacing(4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 
-  .govuk-frontend-supported & {
-    display: block;
+  @include govuk-media-query($from: desktop) {
+    flex-direction: column;
   }
+
+  > li {
+    // Big enough to tap.
+    min-height: 24px;
+    margin-bottom: govuk-spacing(1);
+  }
+}
+
+// A button that looks like a link, for actions on the page itself.
+.app-link-button {
+  @include govuk-link-common;
+  // Buttons do not inherit the text size and font of the page by default.
+  font: inherit;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: govuk-functional-colour(link);
+  text-align: left;
+  cursor: pointer;
+
+  // The link colours GOV.UK Frontend sets apply to :link, which a button
+  // never is, so they are set here.
+  &:hover {
+    color: govuk-functional-colour(link-hover);
+  }
+
+  &:active,
+  &:focus {
+    color: govuk-functional-colour(focus-text);
+  }
+}
+
+// "Link copied" or "Reference copied", after copying.
+.app-copy-done {
+  display: block;
+  color: govuk-functional-colour(success);
+  font-weight: bold;
+
+  &:empty {
+    display: none;
+  }
+}
+
+// When copying does not work: the text in a box, to copy by hand.
+.app-copy-manual {
+  margin-top: govuk-spacing(2);
+  margin-bottom: govuk-spacing(2);
+
+  .govuk-input {
+    @include govuk-font($size: 16);
+  }
+}
+
+.app-rule-action .app-copy-manual {
+  @include govuk-media-query($from: desktop) {
+    width: 20em;
+  }
+}
+
+// The hint about pointing to or tapping a rule. Shown by the script, because
+// pointing and tapping need it.
+.app-rule-hint {
+  color: govuk-functional-colour(secondary-text);
 }
 
 .app-rule-picker {
   margin-top: govuk-spacing(6);
+}
+
+.app-rule-picker__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: govuk-spacing(2) govuk-spacing(4);
 }
 
 .app-rule-action,

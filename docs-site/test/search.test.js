@@ -165,7 +165,7 @@ test("indexes the glossary and the table of standards", () => {
 
 test("indexes only the trust framework sections, without the site's navigation, banners or feedback controls", () => {
   const text = JSON.stringify(INDEX);
-  for (const furniture of ["caution-banner", "[!CAUTION]", "Repository navigation", "This is a working draft", "Give feedback", "Choose a rule", "On this page", "Previous", "Next"]) {
+  for (const furniture of ["caution-banner", "[!CAUTION]", "Repository navigation", "This is a working draft", "Give feedback", "Choose a rule", "On this page", "Previous", "Next", "Copy link", "Copy reference"]) {
     assert.ok(!text.includes(furniture), `the index does not include ${JSON.stringify(furniture)}`);
   }
   assert.ok(INDEX.pages.every((page) => /\/\d\d-/.test(page.url)), "only numbered sections, not contents pages or the feedback guidance");

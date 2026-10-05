@@ -185,7 +185,7 @@ function boldRowHeaders(md) {
 //   belongs to it, such as a list. The block says which rule it is, the
 //   "Rule, paragraph or page" value for a feedback issue (the rule number
 //   as a Markdown link to it), and the heading it comes under. The page's rule
-//   picker and assets/rule-feedback.js use them.
+//   picker and assets/rule-actions.js use them.
 //
 // Both are made when the site is built, so new rules get them automatically.
 // The tests fail if a paragraph looks like a rule but does not match.
