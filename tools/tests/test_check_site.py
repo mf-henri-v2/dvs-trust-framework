@@ -97,6 +97,14 @@ class SiteChecks(unittest.TestCase):
         self.assertTrue(any("broken link: /missing/" in p for p in self.problems('<form action="/missing/"></form>')))
         self.assertTrue(any("broken link" in p for p in self.problems('<form action="/section/"></form>', prefix="/prefix/")))
 
+    def test_navigation_marks_the_current_page(self):
+        nav = '<ul class="govuk-service-navigation__list"><li><a href="/section/"{a}>Section</a></li><li><a href="/"{b}>Home</a></li></ul>'
+        self.assertEqual(self.problems(nav.format(a="", b=' aria-current="page"')), [])
+        problems = self.problems(nav.format(a="", b=""))
+        self.assertTrue(any('link to this page (/) is not marked aria-current="page"' in p for p in problems))
+        problems = self.problems(nav.format(a=' aria-current="true"', b=' aria-current="page"'))
+        self.assertTrue(any("more than one navigation link is marked" in p for p in problems))
+
     def test_ids_must_be_unique(self):
         problems = self.problems('<h2 id="a">A</h2><p id="a">x</p>')
         self.assertTrue(any("more than one element has id 'a'" in p for p in problems))

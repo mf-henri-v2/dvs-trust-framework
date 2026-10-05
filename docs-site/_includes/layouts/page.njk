@@ -43,15 +43,36 @@
         <p class="govuk-body"><a class="govuk-link govuk-visually-hidden-focusable" href="#rule-feedback">Skip to give feedback on a specific rule</a></p>
       {% endif %}
 
-      {% set headings = content | pageHeadings %}
-      {% if headings | length >= 3 %}
+      {# Subsections, and the headings under each, so long sections can be navigated. See lib/contents.js. #}
+      {% set contents = content | pageContents %}
+      {% if (contents | contentsLength) >= 3 %}
+        {#
+          Closed at first, so the section's text starts straight away. A
+          native <details> (GOV.UK Details), so it opens and closes without
+          JavaScript, and following a link inside it leaves it open.
+        #}
         <nav class="app-contents-list" aria-labelledby="on-this-page">
-          <h2 class="govuk-heading-s" id="on-this-page">On this page</h2>
-          <ul class="govuk-list">
-            {% for heading in headings %}
-              <li><a class="govuk-link" href="#{{ heading.id }}">{{ heading.text }}</a></li>
-            {% endfor %}
-          </ul>
+          <details class="govuk-details app-contents-list__details">
+            <summary class="govuk-details__summary">
+              <span class="govuk-details__summary-text" id="on-this-page">On this page</span>
+            </summary>
+            <div class="govuk-details__text">
+              <ul class="govuk-list app-contents-list__list">
+                {% for item in contents %}
+                  <li>
+                    <a class="govuk-link" href="#{{ item.id }}">{{ item.text }}</a>
+                    {% if item.children | length %}
+                      <ul class="govuk-list app-contents-list__sublist">
+                        {% for child in item.children %}
+                          <li><a class="govuk-link" href="#{{ child.id }}">{{ child.text }}</a></li>
+                        {% endfor %}
+                      </ul>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          </details>
         </nav>
       {% endif %}
 
@@ -69,7 +90,8 @@
             <li><a class="govuk-link" href="{{ repositoryUrl }}/blob/main/{{ repoPath }}">View this page on GitHub</a></li>
           </ul>
           {% if ruleGroups | length %}
-            <p class="govuk-body-s app-rule-hint">You can also give feedback on a specific rule by pointing to or tapping it.</p>
+            {# Shown by assets/rule-actions.js, because pointing and tapping need it. #}
+            <p class="govuk-body-s app-rule-hint" hidden>You can also point to or tap a rule to give feedback on it, or to copy a link to it or its reference.</p>
             <form class="app-rule-picker" id="rule-feedback" action="{{ repositoryUrl }}/issues/new/choose" method="get">
               <div class="govuk-form-group">
                 <label class="govuk-label govuk-label--s" for="rule-feedback-reference">Give feedback on a specific rule</label>
@@ -108,5 +130,5 @@
 
 {% block bodyEnd %}
   {{ super() }}
-  {% if (content | ruleGroups) | length %}<script type="module" src="/assets/rule-feedback.js"></script>{% endif %}
+  {% if (content | ruleGroups) | length %}<script type="module" src="/assets/rule-actions.js"></script>{% endif %}
 {% endblock %}

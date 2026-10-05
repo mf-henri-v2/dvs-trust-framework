@@ -24,14 +24,15 @@
 {% endblock %}
 
 {% block govukServiceNavigation %}
+  {# "current": this is the page itself (aria-current="page"). "active": this page is within that part of the site (aria-current="true"). #}
   {{ govukServiceNavigation({
     serviceName: site.title,
     serviceUrl: "/",
     navigation: [
-      { href: "/trust-framework-1.0/", text: "Contents", active: page.url.startsWith("/trust-framework-1.0/") },
-      { href: "/search/", text: "Search", active: page.url == "/search/" },
-      { href: "/changes/", text: "What's changed", active: page.url.startsWith("/changes/") },
-      { href: "/feedback/", text: "Give feedback", active: page.url == "/feedback/" },
+      { href: "/trust-framework-1.0/", text: "Contents", current: page.url == "/trust-framework-1.0/", active: page.url.startsWith("/trust-framework-1.0/") },
+      { href: "/search/", text: "Search", current: page.url == "/search/" },
+      { href: "/changes/", text: "What's changed", current: page.url == "/changes/", active: page.url.startsWith("/changes/") },
+      { href: "/feedback/", text: "Give feedback", current: page.url == "/feedback/" },
       { href: repositoryUrl, text: "GitHub" }
     ]
   }) }}
