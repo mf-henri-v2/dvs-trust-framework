@@ -199,9 +199,12 @@
   }
 }
 
+// Beside the rule, the box is as wide as the space there allows, up to 20em,
+// so it never runs off the page just above the desktop breakpoint.
 .app-rule-action .app-copy-manual {
   @include govuk-media-query($from: desktop) {
     width: 20em;
+    max-width: 100%;
   }
 }
 
