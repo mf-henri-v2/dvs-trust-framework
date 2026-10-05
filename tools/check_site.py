@@ -6,7 +6,8 @@ Run after building the site:
 
 For every HTML page it checks that:
 
-- each internal link and #anchor points to a page and element that exist;
+- each internal link, form address and #anchor points to a page and element
+  that exist;
 - no two elements on a page share an id;
 - every numbered rule has an anchor made from its number and a feedback
   route: it sits in a rule block whose feedback reference is the rule
@@ -22,6 +23,12 @@ For every HTML page it checks that:
 - no repository-only material (the caution banner markers or the
   "Repository navigation" footer) has leaked into the page.
 
+It also checks the search index (search-index.json): every passage in it
+links to a page and anchor that exist, page addresses are relative to the
+site root (so they work under a path prefix), rule and section numbers are
+not repeated, and it holds none of the site's navigation, banners or
+feedback controls.
+
 External links are not checked.
 
 Pass --path-prefix if the site was built for a sub-path, for example
@@ -31,6 +38,7 @@ Pass --path-prefix if the site was built for a sub-path, for example
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from html.parser import HTMLParser
@@ -99,6 +107,8 @@ class Page(HTMLParser):
             self.has_title = True
         if tag in ("a", "link") and a.get("href"):
             self.links.append(a["href"])
+        if tag == "form" and a.get("action"):
+            self.links.append(a["action"])
         if tag in ("img", "script") and a.get("src"):
             self.links.append(a["src"])
         if tag == "img" and "alt" not in a:
@@ -191,6 +201,55 @@ def change_problems(pages: dict[Path, Page], site: Path) -> list[str]:
     return [f"{rel}: unknown trust framework change status {status!r}"]
 
 
+# Text that belongs to the site layout or the repository, not the trust
+# framework, so must never be in the search index.
+NOT_FRAMEWORK_TEXT = (
+    "caution-banner",
+    "Repository navigation",
+    "This is a working draft",
+    "Give feedback on",
+    "Choose a rule",
+    "Continue to GitHub",
+    "On this page",
+)
+
+
+def search_problems(pages: dict[Path, Page], site: Path) -> list[str]:
+    """Problems with the search index: destinations, repeated numbers and site furniture."""
+    index_path = site / "search-index.json"
+    if not index_path.exists():
+        return ["search-index.json is missing"]
+    text = index_path.read_text(encoding="utf-8")
+    try:
+        index = json.loads(text)
+        index_pages, entries = index["pages"], index["entries"]
+    except (ValueError, KeyError) as error:
+        return [f"search-index.json cannot be read: {error}"]
+    if not entries:
+        return ["search-index.json has no entries"]
+    problems = []
+    seen: set[str] = set()
+    for entry in entries:
+        url = index_pages[entry["page"]]["url"]
+        anchor = entry.get("anchor", "")
+        where = f"search-index.json: {entry.get('ref') or entry.get('title') or entry.get('kind')} ({url}#{anchor})"
+        if url.startswith("/") or "://" in url:
+            problems.append(f"{where}: the page address must be relative to the site root")
+            continue
+        target = (site / url / "index.html").resolve()
+        if target not in pages:
+            problems.append(f"{where}: no such page")
+        elif anchor and anchor not in pages[target].ids:
+            problems.append(f"{where}: no such anchor on the page")
+        ref = entry.get("ref")
+        if ref:
+            if ref in seen:
+                problems.append(f"search-index.json: {ref} is in the index more than once")
+            seen.add(ref)
+    problems.extend(f"search-index.json: site or repository text is in the index: {leaked!r}" for leaked in NOT_FRAMEWORK_TEXT if leaked in text)
+    return problems
+
+
 def check(site: Path, prefix: str) -> list[str]:
     problems: list[str] = []
     pages = {p.resolve(): parse(p) for p in site.rglob("*.html")}
@@ -230,6 +289,7 @@ def check(site: Path, prefix: str) -> list[str]:
                 if fragment not in ids:
                     problems.append(f"{rel}: missing anchor: {href}")
     problems.extend(change_problems(pages, site))
+    problems.extend(search_problems(pages, site.resolve()))
     return problems
 
 
@@ -249,7 +309,7 @@ def main() -> int:
     if problems:
         print(f"\n{len(problems)} problem(s) found in {pages} pages.")
         return 1
-    print(f"{pages} pages checked: links, anchors, IDs, headings, images, status banner, rule feedback and the change status are all in order.")
+    print(f"{pages} pages checked: links, anchors, IDs, headings, images, status banner, rule feedback, the change status and the search index are all in order.")
     return 0
 
 

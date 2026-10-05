@@ -6,6 +6,7 @@ Run from the repository root:
 
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
@@ -25,6 +26,18 @@ def page(body: str, title: str = "Page") -> str:
 
 UNCHANGED = '<div data-framework-status="unchanged"><p>No changes.</p></div>'
 
+INDEX = {
+    "pages": [{"url": "section/", "title": "1. Section"}],
+    "entries": [
+        {"page": 0, "kind": "page", "ref": "1", "title": "1. Section"},
+        {"page": 0, "kind": "heading", "anchor": "part-a", "title": "Part A"},
+    ],
+}
+
+
+def write_index(site: Path, index: dict) -> None:
+    (site / "search-index.json").write_text(json.dumps(index), encoding="utf-8")
+
 
 class SiteChecks(unittest.TestCase):
     def setUp(self):
@@ -33,6 +46,7 @@ class SiteChecks(unittest.TestCase):
         (self.site / "section" / "index.html").write_text(page('<h2 id="part-a">Part A</h2>'), encoding="utf-8")
         (self.site / "changes").mkdir()
         (self.site / "changes" / "index.html").write_text(page(UNCHANGED), encoding="utf-8")
+        write_index(self.site, INDEX)
 
     def problems(self, body: str, prefix: str = "/") -> list[str]:
         (self.site / "index.html").write_text(page(body), encoding="utf-8")
@@ -67,6 +81,11 @@ class SiteChecks(unittest.TestCase):
 
     def test_repository_material_must_not_leak(self):
         self.assertTrue(any("leaked" in p for p in self.problems("<p>Repository navigation</p>")))
+
+    def test_form_addresses_are_checked(self):
+        self.assertEqual(self.problems('<form action="/section/"></form>'), [])
+        self.assertTrue(any("broken link: /search/" in p for p in self.problems('<form action="/search/"></form>')))
+        self.assertTrue(any("broken link" in p for p in self.problems('<form action="/section/"></form>', prefix="/prefix/")))
 
     def test_ids_must_be_unique(self):
         problems = self.problems('<h2 id="a">A</h2><p id="a">x</p>')
@@ -114,6 +133,37 @@ class RuleFeedbackChecks(unittest.TestCase):
         problems = self.problems(rule("12.1.a") + rule("12.1.b") + picker(self.REF_A))
         self.assertTrue(any("rule picker does not list exactly" in p for p in problems))
 
+
+class SearchIndexChecks(unittest.TestCase):
+    setUp = SiteChecks.setUp
+    problems = SiteChecks.problems
+
+    def with_entry(self, entry: dict) -> list[str]:
+        write_index(self.site, {"pages": INDEX["pages"], "entries": INDEX["entries"] + [entry]})
+        return self.problems("")
+
+    def test_valid_index_passes(self):
+        self.assertEqual(self.problems(""), [])
+
+    def test_index_is_required(self):
+        (self.site / "search-index.json").unlink()
+        self.assertTrue(any("search-index.json is missing" in p for p in self.problems("")))
+
+    def test_destinations_must_exist(self):
+        self.assertTrue(any("no such anchor" in p for p in self.with_entry({"page": 0, "kind": "rule", "ref": "1.1.a", "anchor": "section-1_1_a"})))
+        write_index(self.site, {"pages": [{"url": "missing/", "title": "Missing"}], "entries": [{"page": 0, "kind": "page"}]})
+        self.assertTrue(any("no such page" in p for p in self.problems("")))
+
+    def test_page_addresses_are_relative_so_they_work_under_a_path_prefix(self):
+        write_index(self.site, {"pages": [{"url": "/section/", "title": "1. Section"}], "entries": [{"page": 0, "kind": "page"}]})
+        self.assertTrue(any("relative to the site root" in p for p in self.problems("")))
+
+    def test_numbers_must_not_repeat(self):
+        self.assertTrue(any("more than once" in p for p in self.with_entry({"page": 0, "kind": "heading", "ref": "1", "anchor": "part-a"})))
+
+    def test_site_furniture_must_not_be_indexed(self):
+        problems = self.with_entry({"page": 0, "kind": "text", "anchor": "part-a", "text": "Give feedback on 1.1.a"})
+        self.assertTrue(any("'Give feedback on'" in p for p in problems))
 
 
 class ChangeStatusChecks(unittest.TestCase):
