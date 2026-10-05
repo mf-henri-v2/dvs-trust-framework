@@ -39,9 +39,16 @@
 {% endblock %}
 
 {% block beforeContent %}
+  {#
+    General feedback, from every page. On a trust framework page the form
+    opens with that page filled in, as the page's own "Give feedback on
+    GitHub" link does; elsewhere it opens with nothing filled in.
+  #}
+  {% set draftFeedbackUrl = (page.url | pageFeedbackUrl(title)) if (repoPath or "").startsWith("trust-framework-1.0/") else repositoryUrl + "/issues/new/choose" %}
+  {% set draftBannerHtml %}This is a working draft, not the published trust framework. <a class="govuk-link" href="{{ site.publishedUrl }}">Read the published version on GOV.UK</a>, or <a class="govuk-link" href="{{ draftFeedbackUrl }}">give feedback on this draft</a>.{% endset %}
   {{ govukPhaseBanner({
     tag: { text: "Draft" },
-    html: 'This is a working draft, not the published trust framework. <a class="govuk-link" href="' + site.publishedUrl + '">Read the published version on GOV.UK</a>.'
+    html: draftBannerHtml
   }) }}
   {% block breadcrumbs %}{% endblock %}
 {% endblock %}
