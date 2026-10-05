@@ -5,6 +5,12 @@
 //
 // Everything is written to the page as text, never as HTML, so a query or a
 // passage can never be run as code.
+//
+// The page works without this script: it offers another way to find a rule
+// (the fallback), and keeps the search results area hidden. This script shows
+// the results area and hides the fallback only once it is running, so if it
+// or search-core.js does not load, the reader still has the fallback. If the
+// search index cannot be loaded, the fallback comes back.
 
 import { createSearch, parseReference, referenceName, queryTerms, destination, resultTitle, resultContext, excerpt } from "./search-core.js";
 
@@ -17,6 +23,8 @@ const input = form?.querySelector("input[name=q]");
 const status = document.querySelector("[data-search-status]");
 const output = document.querySelector("[data-search-output]");
 const examples = document.querySelector("[data-search-examples]");
+const enhanced = document.querySelector("[data-search-enhanced]");
+const fallback = document.querySelector("[data-search-fallback]");
 
 /** An element with a class and text or children. */
 function element(tag, className, ...children) {
@@ -166,12 +174,16 @@ function showUnavailable() {
   announce("Search is not working at the moment");
   output.append(
     element("h2", "govuk-heading-m", "Search is not working at the moment"),
-    element("p", "govuk-body", "Try again later. You can still ", link(new URL("trust-framework-1.0/", SITE_ROOT).href, "browse the contents of the trust framework"), "."),
+    element("p", "govuk-body", "Try again later, or find a rule using the sections listed below."),
   );
+  fallback.hidden = false;
 }
 
 async function run() {
-  if (!form || !output) return;
+  if (!form || !output || !enhanced || !fallback) return;
+  // Search is running: offer it instead of the fallback.
+  enhanced.hidden = false;
+  fallback.hidden = true;
   const query = new URLSearchParams(window.location.search).get("q");
   if (query === null) return;
   input.value = query;
@@ -179,7 +191,9 @@ async function run() {
     showFormError();
     return;
   }
-  examples?.setAttribute("hidden", "");
+  examples.hidden = true;
+  const loading = element("p", "govuk-body app-search-loading", "Loading search…");
+  output.append(loading);
   let search;
   try {
     const response = await fetch(new URL("search-index.json", SITE_ROOT));
@@ -187,9 +201,11 @@ async function run() {
     search = createSearch(await response.json());
   } catch (error) {
     console.error("Search index could not be loaded:", error);
+    loading.remove();
     showUnavailable();
     return;
   }
+  loading.remove();
   const reference = parseReference(query);
   if (reference) showReference(query, reference, search);
   else showResults(query.trim(), search);

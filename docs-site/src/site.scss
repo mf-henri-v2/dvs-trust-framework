@@ -168,22 +168,6 @@ abbr[title] {
   margin-bottom: 0;
 }
 
-// Search needs JavaScript. The page says so, with a way to find a rule
-// without it, until its scripts can run.
-.app-search-with-script {
-  display: none;
-}
-
-.govuk-frontend-supported {
-  .app-search-no-script {
-    display: none;
-  }
-
-  .app-search-with-script {
-    display: block;
-  }
-}
-
 .app-search-exact {
   margin-bottom: govuk-spacing(6);
   padding: govuk-spacing(3) 0 govuk-spacing(1) govuk-spacing(4);

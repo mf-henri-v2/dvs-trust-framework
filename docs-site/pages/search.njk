@@ -16,23 +16,11 @@ title: Search the trust framework
 
     {{ searchForm({ id: "search", label: "Search for a rule number or words", labelClasses: "govuk-label--m" }) }}
 
-    {# Without JavaScript, search cannot run. Hidden when the page's scripts can run. #}
-    <div class="app-search-no-script">
-      <div class="govuk-inset-text">
-        Search needs JavaScript, which is not available in your browser. You can still find a rule by its number:
-        the number starts with its section, so rule 12.4.1.c is in section 12. Open the section, then use your browser's
-        find in page (often Ctrl+F, or Command+F on a Mac).
-      </div>
-      <h2 class="govuk-heading-m">Sections of the trust framework</h2>
-      <ul class="govuk-list">
-        <li><a class="govuk-link" href="/trust-framework-1.0/">Contents</a></li>
-        {% for item in collections.sections %}
-          <li><a class="govuk-link" href="{{ item.url }}">{{ item.data.title }}</a></li>
-        {% endfor %}
-      </ul>
-    </div>
-
-    <div class="app-search-with-script">
+    {#
+      The search results. Hidden until assets/search.js has loaded and
+      started, so the page never offers search that cannot run.
+    #}
+    <div data-search-enhanced hidden>
       <div data-search-examples>
         <h2 class="govuk-heading-s">Examples</h2>
         <ul class="govuk-list">
@@ -44,6 +32,26 @@ title: Search the trust framework
       </div>
       <p class="govuk-visually-hidden" role="status" data-search-status></p>
       <div data-search-output></div>
+    </div>
+
+    {#
+      Another way to find a rule. Shown unless search has started, so it is
+      there without JavaScript, if the search scripts do not load, and if
+      the search index cannot be loaded.
+    #}
+    <div data-search-fallback>
+      <div class="govuk-inset-text">
+        If search is not available, you can still find a rule by its number. The number starts with its section,
+        so rule 12.4.1.c is in section 12. Open the section, then use your browser's find in page
+        (often Ctrl+F, or Command+F on a Mac).
+      </div>
+      <h2 class="govuk-heading-m">Sections of the trust framework</h2>
+      <ul class="govuk-list">
+        <li><a class="govuk-link" href="/trust-framework-1.0/">Contents</a></li>
+        {% for item in collections.sections %}
+          <li><a class="govuk-link" href="{{ item.url }}">{{ item.data.title }}</a></li>
+        {% endfor %}
+      </ul>
     </div>
   </div>
 </div>

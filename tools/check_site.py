@@ -27,7 +27,10 @@ It also checks the search index (search-index.json): every passage in it
 links to a page and anchor that exist, page addresses are relative to the
 site root (so they work under a path prefix), rule and section numbers are
 not repeated, and it holds none of the site's navigation, banners or
-feedback controls.
+feedback controls. On the search page as built, before any script runs, the
+search results area is hidden and the other way to find a rule (the
+fallback, with links to the sections) is shown, so readers have it without
+JavaScript or if the search scripts do not load.
 
 External links are not checked.
 
@@ -73,9 +76,25 @@ class Page(HTMLParser):
         self.changed_section_links = 0
         self.section_changed_notice = False
         self._in_picker = False
+        # The search page: whether its results area and fallback are hidden
+        # as built, and the links in the fallback.
+        self.search_enhanced_hidden: bool | None = None
+        self.search_fallback_hidden: bool | None = None
+        self.search_fallback_links = 0
+        self._div_depth = 0
+        self._fallback_depth: int | None = None
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
+        if tag == "div":
+            self._div_depth += 1
+        if "data-search-enhanced" in a:
+            self.search_enhanced_hidden = "hidden" in a
+        if "data-search-fallback" in a:
+            self.search_fallback_hidden = "hidden" in a
+            self._fallback_depth = self._div_depth
+        if tag == "a" and self._fallback_depth is not None and a.get("href"):
+            self.search_fallback_links += 1
         if a.get("id"):
             if a["id"] in self.ids:
                 self.duplicate_ids.append(a["id"])
@@ -121,6 +140,10 @@ class Page(HTMLParser):
     def handle_endtag(self, tag):
         if tag == "select":
             self._in_picker = False
+        if tag == "div":
+            if self._fallback_depth == self._div_depth:
+                self._fallback_depth = None
+            self._div_depth -= 1
 
     def handle_data(self, data):
         self.text.append(data)
@@ -250,6 +273,22 @@ def search_problems(pages: dict[Path, Page], site: Path) -> list[str]:
     return problems
 
 
+def search_page_problems(pages: dict[Path, Page], site: Path) -> list[str]:
+    """Problems with what the search page shows before its script runs."""
+    path = (site / "search" / "index.html").resolve()
+    page = pages.get(path)
+    if page is None:
+        return ["search/index.html is missing"]
+    problems = []
+    if page.search_enhanced_hidden is not True:
+        problems.append("search/index.html: the search results area must be hidden until the search script starts it")
+    if page.search_fallback_hidden is not False:
+        problems.append("search/index.html: the other way to find a rule (data-search-fallback) must be shown as built")
+    elif page.search_fallback_links < 2:
+        problems.append("search/index.html: the other way to find a rule (data-search-fallback) has no links to the sections")
+    return problems
+
+
 def check(site: Path, prefix: str) -> list[str]:
     problems: list[str] = []
     pages = {p.resolve(): parse(p) for p in site.rglob("*.html")}
@@ -290,6 +329,7 @@ def check(site: Path, prefix: str) -> list[str]:
                     problems.append(f"{rel}: missing anchor: {href}")
     problems.extend(change_problems(pages, site))
     problems.extend(search_problems(pages, site.resolve()))
+    problems.extend(search_page_problems(pages, site.resolve()))
     return problems
 
 
@@ -309,7 +349,7 @@ def main() -> int:
     if problems:
         print(f"\n{len(problems)} problem(s) found in {pages} pages.")
         return 1
-    print(f"{pages} pages checked: links, anchors, IDs, headings, images, status banner, rule feedback, the change status and the search index are all in order.")
+    print(f"{pages} pages checked: links, anchors, IDs, headings, images, status banner, rule feedback, the change status, the search index and the search fallback are all in order.")
     return 0
 
 

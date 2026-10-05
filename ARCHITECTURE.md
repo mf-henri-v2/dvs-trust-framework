@@ -89,7 +89,7 @@ The **Reading site** workflow also runs on every pull request and every change t
 
 | Check | Confirms | Does not confirm |
 | --- | --- | --- |
-| Build and check the site | The site builds and its tests pass. Every page has working internal links and anchors, unique IDs, ordered headings, image alt text and the draft banner. Every numbered rule has an anchor and a feedback route. The "What's changed" page reports a consistent status. Every passage in the search index links to an anchor that exists | That the site is published, or anything about the policy content |
+| Build and check the site | The site builds and its tests pass. Every page has working internal links and anchors, unique IDs, ordered headings, image alt text and the draft banner. Every numbered rule has an anchor and a feedback route. The "What's changed" page reports a consistent status. Every passage in the search index links to an anchor that exists, and the search page offers another way to find a rule until search has started | That the site is published, or anything about the policy content |
 
 On a pull request, GitHub runs the workflows and tools as changed by that pull request. A passing check therefore does not show that the checks themselves were left intact. Review changes to `.github/` and `tools/` with that in mind.
 
@@ -100,7 +100,7 @@ The [reading site](https://ofdia-uk.github.io/dvs-trust-framework/) shows the wo
 Besides the text itself, the site generates three things when it is built:
 
 - **Rule-level feedback.** Readers can give feedback on a specific rule by pointing to or tapping it, or with the rule picker at the bottom of the page. Either way, an issue form opens with the rule number and a link to the rule filled in. The page-level "Give feedback on GitHub" link remains the general route.
-- **Search (`/search/`).** Readers can search for words, or type a rule or section number such as 12.4.1.c to go straight to it. The search index is made from the trust framework Markdown, so it never needs updating by hand. Search needs JavaScript; without it, the page links to every section.
+- **Search (`/search/`).** Readers can search for words, or type a rule or section number such as 12.4.1.c to go straight to it. The search index is made from the trust framework Markdown, so it never needs updating by hand. Search needs JavaScript; if it cannot run, the page explains how to find a rule and links to every section.
 - **"What's changed" (`/changes/`).** The page compares the working draft with the configured baseline and shows any changes to the trust framework content. See [Trust framework changes and repository history](#trust-framework-changes-and-repository-history).
 
 ## Trust framework changes and repository history

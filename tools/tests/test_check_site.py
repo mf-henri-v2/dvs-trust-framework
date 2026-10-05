@@ -39,6 +39,15 @@ def write_index(site: Path, index: dict) -> None:
     (site / "search-index.json").write_text(json.dumps(index), encoding="utf-8")
 
 
+SEARCH_ENHANCED = '<div data-search-enhanced hidden><div data-search-output></div></div>'
+SEARCH_FALLBACK = '<div data-search-fallback><div><p>Find a rule.</p></div><ul><li><a href="../section/">A</a></li><li><a href="../">B</a></li></ul></div>'
+
+
+def write_search_page(site: Path, body: str = SEARCH_ENHANCED + SEARCH_FALLBACK) -> None:
+    (site / "search").mkdir(exist_ok=True)
+    (site / "search" / "index.html").write_text(page(body), encoding="utf-8")
+
+
 class SiteChecks(unittest.TestCase):
     def setUp(self):
         self.site = Path(tempfile.mkdtemp())
@@ -47,6 +56,7 @@ class SiteChecks(unittest.TestCase):
         (self.site / "changes").mkdir()
         (self.site / "changes" / "index.html").write_text(page(UNCHANGED), encoding="utf-8")
         write_index(self.site, INDEX)
+        write_search_page(self.site)
 
     def problems(self, body: str, prefix: str = "/") -> list[str]:
         (self.site / "index.html").write_text(page(body), encoding="utf-8")
@@ -84,7 +94,7 @@ class SiteChecks(unittest.TestCase):
 
     def test_form_addresses_are_checked(self):
         self.assertEqual(self.problems('<form action="/section/"></form>'), [])
-        self.assertTrue(any("broken link: /search/" in p for p in self.problems('<form action="/search/"></form>')))
+        self.assertTrue(any("broken link: /missing/" in p for p in self.problems('<form action="/missing/"></form>')))
         self.assertTrue(any("broken link" in p for p in self.problems('<form action="/section/"></form>', prefix="/prefix/")))
 
     def test_ids_must_be_unique(self):
@@ -164,6 +174,33 @@ class SearchIndexChecks(unittest.TestCase):
     def test_site_furniture_must_not_be_indexed(self):
         problems = self.with_entry({"page": 0, "kind": "text", "anchor": "part-a", "text": "Give feedback on 1.1.a"})
         self.assertTrue(any("'Give feedback on'" in p for p in problems))
+
+class SearchFallbackChecks(unittest.TestCase):
+    setUp = SiteChecks.setUp
+    problems = SiteChecks.problems
+
+    def search_page(self, body: str) -> list[str]:
+        write_search_page(self.site, body)
+        return self.problems("")
+
+    def test_hidden_results_and_shown_fallback_pass(self):
+        self.assertEqual(self.problems(""), [])
+
+    def test_search_page_is_required(self):
+        (self.site / "search" / "index.html").unlink()
+        self.assertTrue(any("search/index.html is missing" in p for p in self.problems("")))
+
+    def test_results_area_must_start_hidden(self):
+        problems = self.search_page('<div data-search-enhanced></div>' + SEARCH_FALLBACK)
+        self.assertTrue(any("results area must be hidden" in p for p in problems))
+
+    def test_fallback_must_start_shown(self):
+        problems = self.search_page(SEARCH_ENHANCED + SEARCH_FALLBACK.replace("data-search-fallback", "data-search-fallback hidden"))
+        self.assertTrue(any("must be shown as built" in p for p in problems))
+
+    def test_fallback_needs_links(self):
+        problems = self.search_page(SEARCH_ENHANCED + '<div data-search-fallback><p>Search is not available.</p></div><a href="../section/">Outside</a><a href="../">Outside</a>')
+        self.assertTrue(any("has no links" in p for p in problems))
 
 
 class ChangeStatusChecks(unittest.TestCase):

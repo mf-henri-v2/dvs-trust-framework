@@ -44,7 +44,7 @@ The search page (`/search/`) finds a rule or section by its number, and passages
 
 **The address.** The search is in the page address (`/search/?q=identity+repair`), so a search can be shared, reloaded or returned to with Back. Each search loads the page again. The number of results is announced once, not while the reader types. Queries and passages are written to the page as text, never as HTML.
 
-**Without JavaScript.** Search needs JavaScript. Without it, the search page explains how to find a rule by its section and links to every section.
+**When search cannot run.** Search needs JavaScript. As built, the search page shows another way to find a rule: how to find a rule by its section, and links to every section. The search results area starts hidden. `assets/search.js` shows it and hides the fallback only once the script is running, so the fallback stays if JavaScript is off or if `search.js` or `search-core.js` does not load, whether or not GOV.UK Frontend's scripts run. While the search index loads, the page says "Loading search…". If the index cannot be loaded or read, the page says search is not working and shows the fallback again. The site check fails if the built search page does not start this way.
 
 ### How the search index is made
 
@@ -52,7 +52,7 @@ The search page (`/search/`) finds a rule or section by its number, and passages
 
 The index has only the numbered sections. It leaves out the contents pages, the feedback guidance, the "What's changed" pages, the caution banner and repository navigation, and everything the site layout adds, such as the navigation, the draft banner and the feedback controls. Page addresses in the index are relative to the home page. The search page works out the home page from the address of its own script, so search works at `/` locally and at `/dvs-trust-framework/` on GitHub Pages.
 
-[`assets/search-core.js`](assets/search-core.js) does the searching, and [`assets/search.js`](assets/search.js) shows the results. The index is about 250 KB (about 55 KB compressed), and only the search page loads it. Search runs in the reader's browser: there is no search service, nothing is sent anywhere, and there are no accounts or analytics.
+[`assets/search-core.js`](assets/search-core.js) does the searching, and [`assets/search.js`](assets/search.js) shows the results. The index is about 250 KB (about 55 KB compressed), and only the search page loads it. Matching runs in the reader's browser, against the index the site serves. There is no external search service, and search adds no accounts or analytics. The search is part of the page address (`/search/?q=…`), so the query is sent to the site's host (GitHub Pages) when the page is requested, like any page address, and may appear in its logs.
 
 ### Maintaining search
 
@@ -88,7 +88,7 @@ The site is not part of GOV.UK. Following the GOV.UK Design System rules for ser
 
 The [Reading site workflow](../.github/workflows/site.yml) runs on every pull request and every change to `main`:
 
-- On a pull request it builds the site, tests the rendering and checks every page. The checks cover internal links, form addresses and anchors, unique IDs, heading order, image alt text, the draft banner, an anchor and feedback route for every numbered rule, a consistent "What's changed" page, and a search index whose every entry links to an anchor that exists. Nothing is published.
+- On a pull request it builds the site, tests the rendering and checks every page. The checks cover internal links, form addresses and anchors, unique IDs, heading order, image alt text, the draft banner, an anchor and feedback route for every numbered rule, a consistent "What's changed" page, a search index whose every entry links to an anchor that exists, and a search page that offers another way to find a rule until search has started. Nothing is published.
 - On `main` it does the same and then publishes the site to GitHub Pages.
 
 Publishing needs GitHub Pages enabled for the repository, with **GitHub Actions** as the source (Settings, Pages).
