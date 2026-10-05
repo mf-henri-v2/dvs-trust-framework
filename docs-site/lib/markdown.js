@@ -14,7 +14,8 @@
 //   to explain abbreviations, and renders the bold row headings in the
 //   section 15 table as table row headers, as the GOV.UK publication does;
 // - gives each numbered rule (for example 12.4.1.c) an anchor, and marks it
-//   for rule-level feedback.
+//   for rule-level feedback;
+// - gives each glossary term an anchor, so search results can link to it.
 
 import path from "node:path";
 import markdownIt from "markdown-it";
@@ -193,6 +194,22 @@ export const RULE_NUMBER = /^(\d+(?:\.\d+)+(?:\.[a-z]+)+)\.?(?=\s|$)/;
 /** The anchor for a rule number: "12.4.1.c" becomes "section-12_4_1_c". */
 export const ruleAnchor = (number) => `section-${number.replace(/\./g, "_")}`;
 
+/**
+ * Where the numbered rules are in a list of block tokens: ruleAt(i) is the
+ * number of the rule that starts at token i, if any, and endsRule(i) says
+ * whether token i ends the rule before it. A rule ends at the next heading,
+ * horizontal rule, rule or hidden anchor paragraph (which comes before a
+ * heading), so it includes its lists. The renderer and the search index
+ * (lib/search.js) both use this, so they agree on what belongs to a rule.
+ */
+export function ruleBoundaries(tokens) {
+  const topLevelParagraph = (i) => tokens[i].type === "paragraph_open" && tokens[i].level === 0;
+  const ruleAt = (i) => (topLevelParagraph(i) ? RULE_NUMBER.exec(tokens[i + 1]?.content ?? "")?.[1] : undefined);
+  const endsRule = (i) =>
+    tokens[i].type === "heading_open" || tokens[i].type === "hr" || (topLevelParagraph(i) && (tokens[i].hidden || ruleAt(i)));
+  return { ruleAt, endsRule };
+}
+
 function rules(md) {
   md.core.ruler.push("rules", (state) => {
     const inputPath = state.env?.page?.inputPath ?? "";
@@ -201,11 +218,7 @@ function rules(md) {
     const plainText = (inline) =>
       (inline.children ?? []).filter((t) => t.type === "text" || t.type === "code_inline").map((t) => t.content).join("").trim();
     const tokens = state.tokens;
-    const topLevelParagraph = (i) => tokens[i].type === "paragraph_open" && tokens[i].level === 0;
-    const ruleAt = (i) => (topLevelParagraph(i) ? RULE_NUMBER.exec(tokens[i + 1]?.content ?? "")?.[1] : undefined);
-    // A rule ends at the next heading, rule or hidden anchor paragraph (which comes before a heading).
-    const endsRule = (i) =>
-      tokens[i].type === "heading_open" || tokens[i].type === "hr" || (topLevelParagraph(i) && (tokens[i].hidden || ruleAt(i)));
+    const { ruleAt, endsRule } = ruleBoundaries(tokens);
     const html = (content) => Object.assign(new state.Token("html_block", "", 0), { content });
     const attr = (value) => md.utils.escapeHtml(value);
     const blockStart = (number, heading) => {
@@ -234,6 +247,32 @@ function rules(md) {
     }
     if (current && withFeedback) out.push(html("</div>\n"));
     state.tokens = out;
+  });
+}
+
+// Glossary terms. In a table whose first column is headed "Term" (the
+// glossary in section 16), each row gets an anchor made from its term, for
+// example #term-identity-repair, so a search result can go straight to it.
+// The text is unchanged.
+export const termAnchor = (term) => `term-${githubSlug(term)}`;
+
+function termAnchors(md) {
+  md.core.ruler.push("term_anchors", (state) => {
+    const tokens = state.tokens;
+    const used = new Set();
+    let glossary = false;
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      if (token.type === "thead_open") glossary = tokens[i + 3]?.content.trim() === "Term";
+      if (!glossary || token.type !== "tr_open" || tokens[i + 1]?.type !== "td_open") continue;
+      const term = tokens[i + 2].content.trim();
+      if (!term) continue;
+      let id = termAnchor(term);
+      for (let n = 2; used.has(id); n++) id = `${termAnchor(term)}-${n}`;
+      used.add(id);
+      token.attrSet("id", id);
+      token.attrJoin("class", "app-term");
+    }
   });
 }
 
@@ -279,4 +318,5 @@ export const markdownLibrary = markdownIt({ html: true, linkify: false, typograp
   .use(bareAnchors)
   .use(rules)
   .use(boldRowHeaders)
+  .use(termAnchors)
   .use(govukClasses);

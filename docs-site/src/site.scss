@@ -151,3 +151,12 @@ abbr[title] {
 .app-change__links {
   overflow-wrap: anywhere;
 }
+
+// A glossary term opened from a search result (#term-identity-repair).
+.app-term {
+  scroll-margin-top: govuk-spacing(4);
+}
+
+.app-term:target > * {
+  background-color: govuk-colour("yellow", $variant: "tint-80");
+}
