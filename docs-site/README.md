@@ -167,6 +167,7 @@ python3 ../tools/check_site.py _site
 | `lib/feedback.js` | Feedback link addresses, and the rules listed in each page's rule picker |
 | `lib/rule-identities.js` | Each rule's permanent identity: checking `rule-identities.json` against the Markdown, and where each identity is now |
 | `scripts/rule-identities.js` | `npm run rules`: check and maintain `rule-identities.json` |
+| `scripts/rule-identities-summary.js` | When the rule identity check fails in the Reading site workflow, writes the job summary: how to record the decision in GitHub or locally, then the check's output |
 | `scripts/rule-identities-action.js` | Turns the form of the "Maintain rule identities" workflow into one `npm run rules` command, so maintainers can do the same in the browser |
 | `lib/contents.js` | The "On this page" list |
 | `lib/search.js` | The search index, made from the trust framework sections |

@@ -131,6 +131,8 @@ The Reading site workflow runs `npm run rules` (in `docs-site/`) before building
 - a rule's wording no longer matches its fingerprint;
 - a number has been used for more than one identity and that has not been acknowledged in `reusedNumbers`.
 
+When the check fails in the Reading site workflow, the step shows an error, **Rule identity decision required**. The run's summary page explains how to record the decision in GitHub, with a link to the Maintain rule identities workflow, or on a computer. Below that is the command's own output, which says exactly what needs deciding.
+
 The **fingerprint** is a guardrail, not the identity. Nothing matches rules by their wording. Its job is to catch wording that has moved to another number. For example, if a rule is inserted as 12.4.1.c and the rules after it become 12.4.1.d, e and f, the old identities would otherwise quietly follow the numbers to the wrong rules. When a rule's wording legitimately changes, a maintainer confirms it and the identity stays the same. The check may mention that a rule's wording matches another identity's, as a hint only: deciding whether two rules are the same is an editorial decision, and no tool makes it. Such a match does stop wording being confirmed in bulk, because a swap of two rules' numbers looks like nothing more than changed wording.
 
 The fingerprint is made from the rule's text as the site reads it. If a change to the site's Markdown rendering changes that text for many rules at once, every affected rule fails the check, and its wording must be confirmed again in that pull request.

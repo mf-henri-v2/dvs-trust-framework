@@ -54,9 +54,32 @@ jobs:
       # Every rule must have exactly one permanent identity in
       # rule-identities.json. If not, this step says what a maintainer needs
       # to decide (see ARCHITECTURE.md, under Rule identities).
+      #
+      # It runs only the check, and fails with the command's own status. On
+      # failure, the job summary explains how to record the decision in
+      # GitHub (the Maintain rule identities workflow) or locally, above the
+      # command's output, which says what needs deciding.
       - name: Check rule identities
         working-directory: docs-site
-        run: npm run rules
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          set +e
+          npm run --silent rules > "$RUNNER_TEMP/rule-identities.txt" 2>&1
+          status=$?
+          set -e
+          cat "$RUNNER_TEMP/rule-identities.txt"
+          if [ "$status" -ne 0 ]; then
+            node scripts/rule-identities-summary.js "$RUNNER_TEMP/rule-identities.txt" "$status" >> "$GITHUB_STEP_SUMMARY" \
+              || echo "::warning::The job summary could not be written. The output above says what needs deciding."
+            if [ "$status" -eq 1 ]; then
+              echo "::error title=Rule identity decision required::A rule was added, reworded, renumbered, moved or removed. See this run's Summary page for how to record the decision in GitHub or locally."
+            else
+              echo "::error title=Rule identity check could not run::See this run's Summary page and the output above."
+            fi
+          fi
+          exit "$status"
 
       - name: Test the Markdown rendering
         working-directory: docs-site
