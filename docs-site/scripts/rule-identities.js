@@ -15,6 +15,14 @@
 // Nothing here decides that two rules are the same. Each command does only
 // what it is told, for the identities and numbers it is given, and refuses
 // anything it cannot do safely.
+//
+// Exit status:
+//   0  the registry matches the trust framework (after the change, if any);
+//   1  the change, if any, was made, but there are still problems to resolve;
+//   2  nothing was done: the command was refused, or the registry could not
+//      be read. rule-identities.json is unchanged.
+// The "Maintain rule identities" workflow relies on these to decide whether
+// to commit.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -111,6 +119,8 @@ export function apply(registry, rules, command, args) {
       });
       const numbers = moves.map((move) => move.rule.number);
       if (new Set(numbers).size !== numbers.length) throw new UsageError("Two identities cannot be given the same number.");
+      const ids = moves.map((move) => move.target.id);
+      if (new Set(ids).size !== ids.length) throw new UsageError("An identity can be given only one new number at a time.");
       for (const { target, rule } of moves) {
         if (target.number === rule.number && target.file === rule.repoPath) {
           done.push(`${target.id} is already rule ${rule.number} in ${rule.repoPath}.`);
@@ -165,6 +175,8 @@ export function apply(registry, rules, command, args) {
   return done;
 }
 
+export const REFUSED = 2;
+
 function main(argv) {
   const [command = "check", ...args] = argv;
   let registry;
@@ -172,7 +184,7 @@ function main(argv) {
     registry = readRegistry(ROOT);
   } catch (error) {
     console.error(error.message);
-    return 1;
+    return REFUSED;
   }
   const rules = frameworkRules(readSections(ROOT));
   if (command !== "check") {
@@ -181,7 +193,7 @@ function main(argv) {
     } catch (error) {
       if (!(error instanceof UsageError)) throw error;
       console.error(error.message);
-      return 1;
+      return REFUSED;
     }
     fs.writeFileSync(path.join(ROOT, REGISTRY_FILE), formatRegistry(registry));
     console.log(`Updated ${REGISTRY_FILE}. Review the change before committing it.\n`);
@@ -197,5 +209,11 @@ function main(argv) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  process.exitCode = main(process.argv.slice(2));
+  try {
+    process.exitCode = main(process.argv.slice(2));
+  } catch (error) {
+    // Anything unexpected also means "nothing done", never "done, with problems left".
+    console.error(error.stack ?? String(error));
+    process.exitCode = REFUSED;
+  }
 }

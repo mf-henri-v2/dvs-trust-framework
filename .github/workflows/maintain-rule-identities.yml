@@ -1,0 +1,177 @@
+name: Maintain rule identities
+
+# For maintainers who work in the browser. When the Reading site check says
+# that rule-identities.json needs a decision (see ARCHITECTURE.md, under Rule
+# identities), make the decision, then run this workflow on the pull
+# request's branch: choose the branch under "Use workflow from", the
+# operation, and the rules it is for.
+#
+# It runs one rule identity command (npm run rules -- ..., from
+# docs-site/scripts/rule-identities.js), commits the updated
+# rule-identities.json to the same branch, and runs the checks again. The
+# command keeps all its safeguards: if it refuses, nothing is committed.
+# This workflow decides nothing itself: it records the decision you chose.
+#
+# Only people with write access can run a workflow manually. It refuses to
+# run on the default branch (main) or on a tag.
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "The decision to record. \"check only\" changes nothing. See ARCHITECTURE.md, under Rule identities."
+        type: choice
+        required: true
+        default: check only (change nothing)
+        options:
+          - check only (change nothing)
+          - confirm wording (IDs)
+          - confirm ALL changed wording
+          - add new rules (numbers)
+          - renumber or move (ID=number)
+          - retire (IDs)
+          - acknowledge reused numbers (numbers)
+      arguments:
+        description: "The rules it is for, separated by spaces: identities (r0254), rule numbers (12.4.1.g) or identity=number pairs (r0254=12.4.1.d). Leave empty for \"check only\" and \"confirm ALL\"."
+        type: string
+        required: false
+      replaced_by:
+        description: "For \"retire\" only: the identities of any rules that replace them (r0340 r0341). Otherwise leave empty."
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+# One run at a time on each branch, so two decisions never race each other.
+concurrency:
+  group: maintain-rule-identities-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  refuse:
+    name: Refuse to change the default branch
+    if: github.ref_type != 'branch' || github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Refuse
+        run: |
+          echo "::error::This workflow never changes ${GITHUB_REF_NAME}. Run it on your pull request's branch: choose that branch under \"Use workflow from\"."
+          exit 1
+
+  maintain:
+    name: Record the decision on this branch
+    if: github.ref_type == 'branch' && github.ref_name != github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # to commit rule-identities.json to this branch
+      actions: write # to start the checks on the new commit
+    steps:
+      # The branch chosen under "Use workflow from". The token is not kept in
+      # the checkout, so only the commit step can push.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: docs-site/.nvmrc
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+
+      # Install scripts are not needed to run the command, so none are run.
+      - name: Install dependencies
+        working-directory: docs-site
+        run: npm ci --ignore-scripts
+
+      # The form's values are passed as environment variables, never written
+      # into a command. Only identities, rule numbers and identity=number
+      # pairs get through, as arguments to the operation chosen.
+      - name: Read the form
+        working-directory: docs-site
+        env:
+          OPERATION: ${{ inputs.operation }}
+          ARGUMENTS: ${{ inputs.arguments }}
+          REPLACED_BY: ${{ inputs.replaced_by }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: node scripts/rule-identities-action.js > "$RUNNER_TEMP/rules-arguments"
+
+      - name: Run the rule identity command
+        id: run
+        working-directory: docs-site
+        run: |
+          mapfile -t args < "$RUNNER_TEMP/rules-arguments"
+          echo "Running: npm run rules -- ${args[*]}"
+          set +e
+          npm run --silent rules -- "${args[@]}" > "$RUNNER_TEMP/rules-output" 2>&1
+          status=$?
+          set -e
+          cat "$RUNNER_TEMP/rules-output"
+          {
+            echo "## Maintain rule identities"
+            echo
+            echo "Branch: \`${GITHUB_REF_NAME}\`. Command: \`npm run rules -- ${args[*]}\`."
+            echo
+            echo '````text'
+            cat "$RUNNER_TEMP/rules-output"
+            echo '````'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "command=${args[*]}" >> "$GITHUB_OUTPUT"
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+          # 2: refused, or could not run. rule-identities.json is unchanged.
+          if [ "$status" -ge 2 ]; then
+            echo "::error::The command was refused, so nothing was changed or committed. Its output says why."
+            exit 1
+          fi
+          if [ "${args[0]}" = "check" ] && [ "$status" -ne 0 ]; then
+            echo "::error::rule-identities.json needs a decision. The output above says what to decide."
+            exit 1
+          fi
+
+      - name: Commit rule-identities.json to this branch
+        id: commit
+        if: steps.run.outputs.command != 'check'
+        env:
+          COMMAND: ${{ steps.run.outputs.command }}
+          STATUS: ${{ steps.run.outputs.status }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          changes="$(git status --porcelain)"
+          if [ -z "$changes" ]; then
+            echo "Nothing to change: rule-identities.json already records this. Nothing was committed."
+            echo "**Nothing to change.** \`rule-identities.json\` already records this, so nothing was committed." >> "$GITHUB_STEP_SUMMARY"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Only the registry may change. Anything else means something is wrong.
+          if [ "$changes" != " M rule-identities.json" ]; then
+            echo "::error::Files other than rule-identities.json changed, so nothing was committed:"
+            echo "$changes"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rule-identities.json
+          git commit --message "Record rule identity decision: ${COMMAND}" \
+            --message "Recorded with the Maintain rule identities workflow, run by ${GITHUB_ACTOR}."
+          # Push to the same branch only. If the branch has moved on since the
+          # run started, this fails rather than overwrite anything.
+          auth="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth}" push origin "HEAD:refs/heads/${GITHUB_REF_NAME}"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "**Committed** the updated \`rule-identities.json\` to \`${GITHUB_REF_NAME}\`. Review it in the pull request." >> "$GITHUB_STEP_SUMMARY"
+          if [ "$STATUS" -ne 0 ]; then
+            echo "::warning::The decision was recorded, but rule-identities.json still needs other decisions. The output above says what."
+            echo "**Still to resolve:** the output above lists the other decisions needed before the checks pass." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # Commits pushed by this workflow do not trigger other workflows
+      # automatically, so start the checks on the new commit explicitly.
+      - name: Run the checks on the updated branch
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run site.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
+          gh workflow run checks.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
