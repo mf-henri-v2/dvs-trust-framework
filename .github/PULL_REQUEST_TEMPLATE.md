@@ -18,6 +18,7 @@
 Complete this if you ticked "Policy wording".
 Link the OfDIA decision or issue that authorises the change, and say who in OfDIA approved it.
 Keep policy wording changes in their own pull request, separate from repository changes.
+If you added, renumbered, moved, reworded or removed a rule, record it in rule-identities.json in this pull request (see ARCHITECTURE.md, under Rule identities).
 -->
 
 ## Reviewer notes

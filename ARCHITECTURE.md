@@ -38,12 +38,14 @@ If you cannot tell whether a change alters meaning, treat it as a policy change.
 | `.github/` | Issue forms, pull request template, code owners and workflows |
 | `docs-site/` | Source for the [reading site](https://ofdia-uk.github.io/dvs-trust-framework/), built from the Markdown and published from `main` |
 | `framework-baseline.json` | The tag the reading site's "What's changed" page compares the trust framework with. See [The framework baseline](VERSIONS.md#the-framework-baseline). |
+| `rule-identities.json` | The permanent identity of every rule, for permanent rule links. See [Rule identities](#rule-identities). |
 
 ## How the text is structured
 
 - Each numbered section is one Markdown file. Each part of the publication is a folder.
 - Invisible HTML anchors such as `<a id="section-12_4"></a>` keep the anchor IDs used on GOV.UK, so cross-references work. A reference to another file is a relative link to that file and anchor.
 - A numbered rule is a paragraph that starts with its number, such as `12.4.1.c.`. The reading site gives each one an anchor made from its number, such as `#section-12_4_1_c`, when it is built. These anchors are not in the Markdown, so do not add them by hand.
+- Each rule also has a permanent identity, such as `r0254`, recorded in `rule-identities.json`, not in the Markdown. When you add, renumber, move or remove a rule, record it there. See [Rule identities](#rule-identities).
 - The example boxes in the GOV.UK publication are shown as quoted blocks. The heading in each box is one level below the heading of the section it sits in.
 - The abbreviation definitions from the GOV.UK publication (`*[DVS]: Digital Verification Service`) are kept unchanged in an HTML comment at the end of section 16. GitHub does not display them. The reading site uses them to explain abbreviations, as GOV.UK does. Keep the comment, and add any new definition inside it.
 - The row headings in the section 15 table are bold cells. On GOV.UK and the reading site they are table row headers.
@@ -89,7 +91,7 @@ The **Reading site** workflow also runs on every pull request and every change t
 
 | Check | Confirms | Does not confirm |
 | --- | --- | --- |
-| Build and check the site | The site builds and its tests pass. Every page has working internal links and anchors, unique IDs, ordered headings, image alt text and the draft banner. Every numbered rule has an anchor and a feedback route. The "What's changed" page reports a consistent status. Every passage in the search index links to an anchor that exists, the search page offers another way to find a rule until search has started, and the site navigation marks the current page | That the site is published, or anything about the policy content |
+| Build and check the site | Every rule has exactly one permanent identity in `rule-identities.json`, and the registry agrees with the Markdown. The site builds and its tests pass. Every page has working internal links and anchors, unique IDs, ordered headings, image alt text and the draft banner. Every numbered rule has an anchor and a feedback route, and every permanent rule link goes to its rule or, for a retired rule, to a page that says so. The "What's changed" page reports a consistent status. Every passage in the search index links to an anchor that exists, the search page offers another way to find a rule until search has started, and the site navigation marks the current page | That the site is published, or anything about the policy content |
 
 On a pull request, GitHub runs the workflows and tools as changed by that pull request. A passing check therefore does not show that the checks themselves were left intact. Review changes to `.github/` and `tools/` with that in mind.
 
@@ -99,9 +101,68 @@ The [reading site](https://ofdia-uk.github.io/dvs-trust-framework/) shows the wo
 
 Besides the text itself, the site generates three things when it is built:
 
-- **Rule-level feedback, links and references.** Readers can give feedback on a specific rule by pointing to or tapping it, or with the rule picker at the bottom of the page, which can be filtered by rule number or heading. Either way, an issue form opens with the rule number and a link to the rule filled in. The page-level "Give feedback on GitHub" link remains the general route, and the "Draft" banner at the top of every page offers the same route ("give feedback on this draft") without scrolling. The same places offer "Copy link" and "Copy reference" (for example `Rule 12.4.1.c`). A link to a rule highlights the whole rule.
+- **Rule-level feedback, links and references.** Readers can give feedback on a specific rule by pointing to or tapping it, or with the rule picker at the bottom of the page, which can be filtered by rule number or heading. Either way, an issue form opens with the rule number and a link to the rule filled in. The page-level "Give feedback on GitHub" link remains the general route, and the "Draft" banner at the top of every page offers the same route ("give feedback on this draft") without scrolling. The same places offer "Copy link", which copies the rule's permanent link, and "Copy reference" (for example `Rule 12.4.1.c`). A link to a rule highlights the whole rule. See [Rule identities](#rule-identities).
 - **Search (`/search/`).** Readers can search for words, or type a rule or section number such as 12.4.1.c to go straight to it. The search index is made from the trust framework Markdown, so it never needs updating by hand. Search needs JavaScript; if it cannot run, the page explains how to find a rule and links to every section.
 - **"What's changed" (`/changes/`).** The page compares the working draft with the configured baseline and shows any changes to the trust framework content. See [Trust framework changes and repository history](#trust-framework-changes-and-repository-history).
+
+## Rule identities
+
+A rule's number, such as 12.4.1.c, tells readers where it is, but numbers change: a rule can be renumbered, moved to another section, removed, split or merged. So each rule also has a **permanent identity**, such as `r0254`, that never changes and is never reused. The reading site gives each identity a **permanent link**, `/rules/r0254/`, which goes to wherever that rule is in the working draft. "Copy link" and the links in new feedback issues use it. People still see and cite the rule's current number: "Rule 12.4.1.c".
+
+The identities are recorded in [`rule-identities.json`](rule-identities.json), one rule per line. They are never worked out from the number, the wording or the position, and the build never changes them. The Markdown is not changed to hold them.
+
+| Field | Meaning |
+| --- | --- |
+| `id` | The permanent identity: `r` and at least four digits. Never changed or reused. New ones are added at the end. |
+| `number`, `file` | Where a rule in the working draft is now: its number and section file. |
+| `fingerprint` | A short hash of the rule's wording, without its number, as last confirmed. See [Checks](#checks). |
+| `history` | Every earlier number and file the rule had, oldest first. |
+| `status` | `"retired"` for a rule that has been removed. Left out for a rule in the working draft. |
+| `replacedBy` | For a retired rule, the identities of any rules that replace it. |
+| `reusedNumbers` | Every number that has been used for more than one identity, with those identities. |
+
+### Checks
+
+The Reading site workflow runs `npm run rules` (in `docs-site/`) before building, and the build runs the same check. It fails, and says what to decide, if:
+
+- a rule has no identity, or an identity's rule is missing from the Markdown;
+- an identity is repeated, out of order or malformed;
+- a rule is not in the file its entry says;
+- a rule's wording no longer matches its fingerprint;
+- a number has been used for more than one identity and that has not been acknowledged in `reusedNumbers`.
+
+The **fingerprint** is a guardrail, not the identity. Nothing matches rules by their wording. Its job is to catch wording that has moved to another number. For example, if a rule is inserted as 12.4.1.c and the rules after it become 12.4.1.d, e and f, the old identities would otherwise quietly follow the numbers to the wrong rules. When a rule's wording legitimately changes, a maintainer confirms it and the identity stays the same. The check may mention that a rule's wording matches another identity's, as a hint only: deciding whether two rules are the same is an editorial decision, and no tool makes it.
+
+The fingerprint is made from the rule's text as the site reads it. If a change to the site's Markdown rendering changes that text for many rules at once, every affected rule fails the check, and its wording must be confirmed again in that pull request.
+
+### Maintaining the identities
+
+Make these changes in the same pull request as the Markdown change. On your own computer, run the commands in `docs-site/`. In the browser, edit `rule-identities.json` directly: the failed check prints the lines to add or change. Review the change to `rule-identities.json` like any other.
+
+| You have… | Do this |
+| --- | --- |
+| Added a genuinely new rule | `npm run rules -- add 12.4.1.g` gives it the next identity. |
+| Changed a rule's wording | `npm run rules -- confirm r0254`. If many rules were reworded and nothing else changed, `npm run rules -- confirm --all-changed`. That refuses if anything else is wrong, such as a rule without an identity, because then some wording may have moved to a different number. |
+| Renumbered a rule, or moved it to another section | `npm run rules -- renumber r0254=12.4.1.d`. Give several at once when rules shift together: `renumber r0256=12.4.1.f r0255=12.4.1.e r0254=12.4.1.d`. The old number and file are added to its `history`. |
+| Removed a rule | `npm run rules -- retire r0254`. Its permanent link keeps working and says it has been removed. |
+| Replaced a rule with a different one | Add the new rule, then `npm run rules -- retire r0254 --replaced-by r0340`. |
+| Split a rule | Decide whether one part is still the same rule. If so, keep its identity (confirm its wording) and add the other parts as new rules. If not, add all the parts as new rules and retire the old one `--replaced-by` all of them. |
+| Merged rules | Decide whether the merged rule is one of the old ones. If so, keep that identity and retire the others `--replaced-by` it. If not, add it as a new rule and retire all the old ones `--replaced-by` it. |
+| Reused a number another rule used to have | Check that this is intended, then `npm run rules -- reuse 12.4.1.c`. The check asks for this whenever a number has been used for more than one rule, including the numbers that shift when a rule is inserted. |
+
+Never edit an `id`, reuse one, or delete an entry. A permanent identity always means the same rule. If an identity was registered by mistake, for example a renumbered rule was added as new, retire the mistaken identity `--replaced-by` the right one, and record the rule's new number on the right one.
+
+### Links that use numbers
+
+Links that use a rule's number, such as `.../12-service-requirements/#section-12_4_1_c`, keep working: every rule keeps its number anchor. When a rule is renumbered, moved or retired, its old anchor stays on the page it was on, in a "Former rule numbers" list at the end of that section. The entry says what the rule is now, or that it has been removed, so an older link still lands somewhere that explains it. Searching for an old number does the same.
+
+A number link cannot say which rule it meant if the number has been used for more than one rule. The site does not choose:
+
+- if a rule on that page has the number now, the link goes to it, as it always has, but that rule then shows a note naming the other rules that had the number on that page;
+- if no rule has it now, the "Former rule numbers" entry lists every rule that had it;
+- search lists every rule that has had the number.
+
+A permanent link never has this problem, which is why "Copy link" uses it. The note is shown only to readers who arrive through the number anchor. If a whole section file is renamed or removed, links to its old page address stop working. Recording the move keeps the rule's permanent link working, but not the old page address.
 
 ## Trust framework changes and repository history
 
