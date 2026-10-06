@@ -137,7 +137,12 @@ The fingerprint is made from the rule's text as the site reads it. If a change t
 
 ### Maintaining the identities
 
-Make these changes in the same pull request as the Markdown change. On your own computer, run the commands in `docs-site/`. In the browser, edit `rule-identities.json` directly: the failed check prints the lines to add or change. Review the change to `rule-identities.json` like any other.
+Make these changes in the same pull request as the Markdown change. There are two ways to make them, and they do exactly the same thing:
+
+- **In GitHub, in the browser:** run the **Maintain rule identities** workflow on the pull request's branch. No terminal is needed. See [Working entirely in GitHub](#working-entirely-in-github).
+- **On your own computer:** run `npm run rules` in `docs-site/`, as in the table below.
+
+Either way, review the change to `rule-identities.json` in the pull request like any other change. You can also edit `rule-identities.json` by hand, using the lines the failed check prints, but the workflow and the command check each decision for you.
 
 | You have… | Do this |
 | --- | --- |
@@ -145,12 +150,75 @@ Make these changes in the same pull request as the Markdown change. On your own 
 | Changed a rule's wording | `npm run rules -- confirm r0254`. If many rules were reworded and nothing else changed, `npm run rules -- confirm --all-changed`. That refuses if anything else is wrong, such as a rule without an identity, or if any rule's wording is now another rule's confirmed wording, as when rules swap numbers. In either case some wording may have moved to a different number, so decide about those rules one at a time: `renumber` them if they moved, or `confirm` them by name if they did not. |
 | Renumbered a rule, or moved it to another section | `npm run rules -- renumber r0254=12.4.1.d`. Give several at once when rules shift together: `renumber r0256=12.4.1.f r0255=12.4.1.e r0254=12.4.1.d`. The old number and file are added to its `history`. |
 | Removed a rule | `npm run rules -- retire r0254`. Its permanent link keeps working and says it has been removed. |
-| Replaced a rule with a different one | Add the new rule, then `npm run rules -- retire r0254 --replaced-by r0340`. |
-| Split a rule | Decide whether one part is still the same rule. If so, keep its identity (confirm its wording) and add the other parts as new rules. If not, add all the parts as new rules and retire the old one `--replaced-by` all of them. |
+| Replaced a rule with a different one | `npm run rules -- retire r0254`, then `add` the new rule, then `npm run rules -- retire r0254 --replaced-by r0340` to record what replaces it. Retire first: if the new rule has the old one's number, `add` refuses while the old identity still holds it. |
+| Split a rule | Decide whether one part is still the same rule. If so, keep its identity (confirm its wording) and `add` the other parts as new rules. If not, `retire` the old one, `add` all the parts as new rules, then `retire` it again `--replaced-by` all of them. |
 | Merged rules | Decide whether the merged rule is one of the old ones. If so, keep that identity and retire the others `--replaced-by` it. If not, add it as a new rule and retire all the old ones `--replaced-by` it. |
 | Reused a number another rule used to have | Check that this is intended, then `npm run rules -- reuse 12.4.1.c`. The check asks for this whenever a number has been used for more than one rule, including the numbers that shift when a rule is inserted. |
 
 Never edit an `id`, reuse one, or delete an entry. A permanent identity always means the same rule. If an identity was registered by mistake, for example a renumbered rule was added as new, retire the mistaken identity `--replaced-by` the right one, and record the rule's new number on the right one.
+
+The command exits with status 0 if the registry then matches the trust framework, 1 if the change was made but other decisions are still needed, and 2 if it refused and changed nothing.
+
+### Working entirely in GitHub
+
+Every identity decision can be made in GitHub in the browser, in the same pull request as the wording change, without a terminal. The **Maintain rule identities** workflow ([`.github/workflows/maintain-rule-identities.yml`](.github/workflows/maintain-rule-identities.yml)) runs one of the commands above on your branch. It commits the updated `rule-identities.json` to that branch, then runs the checks again.
+
+**Running it.** You need write access to the repository, and your branch must be in this repository (a workflow runs in the repository that holds the branch).
+
+1. Go to **Actions**, choose **Maintain rule identities**, then **Run workflow**.
+2. Under **Use workflow from**, choose your pull request's branch. The workflow refuses to run on `main` or on a tag.
+3. Choose the **operation**, and type the rules it is for in **arguments**, separated by spaces.
+4. Choose **Run workflow**. Open the run when it appears. Its summary shows the command it ran and everything the command said.
+
+| Operation | Arguments | Runs |
+| --- | --- | --- |
+| check only (change nothing) | none | `npm run rules -- check` |
+| confirm wording (IDs) | identities, such as `r0254 r0255` | `npm run rules -- confirm r0254 r0255` |
+| confirm ALL changed wording | none | `npm run rules -- confirm --all-changed` |
+| add new rules (numbers) | rule numbers, such as `12.4.1.g` | `npm run rules -- add 12.4.1.g` |
+| renumber or move (ID=number) | identity=number pairs, such as `r0254=12.4.1.d` | `npm run rules -- renumber r0254=12.4.1.d` |
+| retire (IDs) | identities, plus any replacements in **replaced by** | `npm run rules -- retire r0254 --replaced-by r0340` |
+| acknowledge reused numbers (numbers) | rule numbers, such as `12.4.1.c` | `npm run rules -- reuse 12.4.1.c` |
+
+**What happens.**
+
+- **Recorded.** `github-actions[bot]` commits `rule-identities.json` to your branch, with a message such as "Record rule identity decision: confirm r0254", and starts the Reading site and Repository checks on that commit. Commits made by a workflow do not start other workflows by themselves, which is why it starts them. If other decisions are still needed, the run says so: make the next one and run the workflow again.
+- **Refused.** The run fails and nothing is committed. The command's reasons are in the summary. This happens for the same reasons as on a computer. For example, `confirm ALL changed wording` refuses when any rule's wording is now another rule's confirmed wording, as when rules swap numbers.
+- **Nothing to change.** If the registry already records the decision, the run says so and commits nothing.
+
+**Safeguards.** The workflow is only a form in front of the commands above, and makes no decision itself.
+
+- It accepts only identities, rule numbers and identity=number pairs, so what you type can never become anything but arguments to the operation you chose.
+- `confirm ALL changed wording` runs only when you choose it, and takes no arguments.
+- It commits only `rule-identities.json`, never the trust framework text. If anything else changed, it fails without committing.
+- It pushes only to the branch it was run on, and never forces. If the branch has moved on since the run started, the push fails: run it again.
+- It uses no secrets, and only two permissions: to commit to the branch, and to start the checks.
+
+#### Example: a reworded rule
+
+Rule 12.4.1.c (`r0254`) is reworded.
+
+1. On a branch, edit `trust-framework-1.0/part-3/12-service-requirements.md` in GitHub and change the wording of 12.4.1.c. Commit the change.
+2. Open a draft pull request for the branch.
+3. The Reading site check fails at **Check rule identities**. It says that the wording of rule 12.4.1.c, registered as `r0254`, has changed since it was last confirmed.
+4. Decide whether 12.4.1.c is still the same logical rule: the same requirement, reworded. This is an editorial judgement, not a matter of how many words changed.
+5. If it is, run **Maintain rule identities** on the branch, with **confirm wording (IDs)** and arguments `r0254`.
+6. The workflow updates `r0254`'s fingerprint in `rule-identities.json` and commits it to the branch.
+7. The checks run again on the new commit, and pass.
+8. Reviewers see the wording change and the identity decision together in the pull request's **Files changed**: the Markdown, and the one changed line for `r0254` in `rule-identities.json`.
+9. Merging the pull request accepts the new wording into the working draft, and records that it is still rule `r0254`. Links and feedback that use `/rules/r0254/` keep going to it.
+
+Confirming does not approve the wording. It records the maintainer's judgement that the rule is still the same rule. Review and merging the pull request remain how a change is accepted, as for any other change. If it is no longer the same logical rule, do not confirm it. Instead, record what happened: `retire` the old identity, `add` the new rule, and record what replaces what, as in the examples below. Identities are never edited or reused.
+
+#### Other examples
+
+Each step is one run of the workflow on the pull request's branch, after the wording change has been committed there.
+
+- **A genuinely new rule,** 12.4.1.g: **add new rules (numbers)** with `12.4.1.g`. It gets the next identity, such as `r0338`.
+- **A renumbered or moved rule:** if 12.4.1.c becomes 12.4.1.d, or moves to section 11 as 11.2.e, use **renumber or move (ID=number)** with `r0254=12.4.1.d` or `r0254=11.2.e`. When an inserted rule shifts several, give them all in one run: `r0256=12.4.1.f r0255=12.4.1.e r0254=12.4.1.d`. Then add the inserted rule (**add new rules**), and acknowledge the numbers that now belong to different rules (**acknowledge reused numbers**). The check lists them.
+- **A removed rule:** **retire (IDs)** with `r0254`. Its permanent link keeps working and says it has been removed.
+- **A replacement or a split** where the old rule is not kept: first **retire (IDs)** with `r0254`. Then **add new rules (numbers)** with the new rules' numbers, such as `12.4.1.c 12.4.1.h`. Then **retire (IDs)** again with `r0254`, and the new identities in **replaced by**, such as `r0338 r0339`. If a new rule reuses the old rule's number, acknowledge that number too.
+- **A reused number:** after checking that it is intended, **acknowledge reused numbers (numbers)** with the number, such as `12.4.1.c`.
 
 ### Links that use numbers
 
