@@ -222,6 +222,106 @@ test("changed wording keeps the identity once a maintainer confirms it, one rule
   assert.deepEqual(registry.rules.map((entry) => [entry.id, entry.number]), [["r0001", "12.1.a"], ["r0002", "12.1.b"], ["r0003", "11.1.a"]]);
 });
 
+/** A registry for made-up sections, with identities r0001, r0002 … in reading order. */
+function registryFor(files) {
+  const rules = rulesOf(files);
+  return {
+    rules: rules.map((rule, i) => ({ id: `r${String(i + 1).padStart(4, "0")}`, number: rule.number, file: rule.repoPath, fingerprint: rule.fingerprint })),
+    reusedNumbers: [],
+  };
+}
+const OFFICER = "You must name a security officer.";
+const THREE = { [S12]: ["12. Service requirements", `12.1.a. ${ENCRYPT}`, `12.1.b. ${TEST}`, `12.1.c. ${OFFICER}`] };
+
+test("two rules swapping numbers cannot be confirmed in bulk: each identity would point at the other rule", () => {
+  // 12.1.a and 12.1.b swap places, each keeping its wording. Every number
+  // still has a rule and every identity still has a number, so only the
+  // fingerprints show that anything is wrong.
+  const swapped = { ...BASE, [S12]: ["12. Service requirements", `12.1.a. ${TEST}`, `12.1.b. ${ENCRYPT}`] };
+  const rules = rulesOf(swapped);
+  const registry = baseRegistry();
+  const original = clone(registry);
+  const { wording, suspicious, other } = checkRegistry(registry, rules, { wordingOnly: true });
+  assert.deepEqual([wording.length, suspicious.length, other.length], [0, 2, 0]);
+  fails(suspicious, /rule 12\.1\.a .* registered as r0001, has changed[\s\S]*confirmed wording of r0002[\s\S]*cannot be confirmed with --all-changed/);
+  fails(suspicious, /rule 12\.1\.b .* registered as r0002, has changed[\s\S]*confirmed wording of r0001[\s\S]*cannot be confirmed with --all-changed/);
+  // The full check reports both, so the build fails too.
+  assert.equal(checkRegistry(registry, rules).length, 2);
+
+  assert.throws(() => run(registry, rules, "confirm", "--all-changed"), /no rule's wording is now another rule's confirmed wording[\s\S]*r0001[\s\S]*r0002/);
+  assert.deepEqual(registry, original, "nothing is confirmed");
+});
+
+test("a swap is resolved by recording the new numbers, which keeps each identity with its own rule", () => {
+  const swapped = { ...BASE, [S12]: ["12. Service requirements", `12.1.a. ${TEST}`, `12.1.b. ${ENCRYPT}`] };
+  const rules = rulesOf(swapped);
+  const registry = baseRegistry();
+  const fingerprints = Object.fromEntries(registry.rules.map((entry) => [entry.id, entry.fingerprint]));
+  run(registry, rules, "renumber", "r0001=12.1.b", "r0002=12.1.a");
+  // Each number has now been used by both rules, which must be acknowledged.
+  fails(checkRegistry(registry, rules), /The number 12\.1\.a has been used for more than one rule: r0001, r0002/);
+  run(registry, rules, "reuse", "12.1.a", "12.1.b");
+  assert.deepEqual(checkRegistry(registry, rules), []);
+
+  const identities = resolveIdentities(registry, rules);
+  // r0001 is still the encryption rule, now numbered 12.1.b; its wording was never re-confirmed.
+  assert.equal(identities.byId.r0001.number, "12.1.b");
+  assert.equal(registry.rules[0].fingerprint, fingerprints.r0001);
+  assert.match(identities.byId.r0001.excerpt, /encrypt data at rest/);
+  assert.equal(identities.byId.r0001.permanentUrl, "/rules/r0001/");
+  assert.equal(identities.byId.r0002.number, "12.1.a");
+  assert.match(identities.byId.r0002.excerpt, /test your controls/);
+  const html = renderSection(S12, swapped[S12], identities);
+  assert.match(html, /data-rule="12\.1\.b" [^>]*data-rule-id="r0001">\s*<p id="section-12_1_b" class="app-rule govuk-body">12\.1\.b\. You must encrypt/);
+});
+
+test("a three-rule permutation cannot be confirmed in bulk, and is resolved by recording each new number", () => {
+  // 12.1.a → 12.1.c, 12.1.b → 12.1.a, 12.1.c → 12.1.b.
+  const rotated = { [S12]: ["12. Service requirements", `12.1.a. ${TEST}`, `12.1.b. ${OFFICER}`, `12.1.c. ${ENCRYPT}`] };
+  const rules = rulesOf(rotated);
+  const registry = registryFor(THREE);
+  const original = clone(registry);
+  const { wording, suspicious, other } = checkRegistry(registry, rules, { wordingOnly: true });
+  assert.deepEqual([wording.length, suspicious.length, other.length], [0, 3, 0]);
+  assert.throws(() => run(registry, rules, "confirm", "--all-changed"), /no rule's wording is now another rule's confirmed wording/);
+  assert.deepEqual(registry, original);
+
+  run(registry, rules, "renumber", "r0001=12.1.c", "r0002=12.1.a", "r0003=12.1.b");
+  run(registry, rules, "reuse", "12.1.a", "12.1.b", "12.1.c");
+  assert.deepEqual(checkRegistry(registry, rules), []);
+  const identities = resolveIdentities(registry, rules);
+  assert.deepEqual(["r0001", "r0002", "r0003"].map((id) => identities.byId[id].number), ["12.1.c", "12.1.a", "12.1.b"]);
+  assert.deepEqual(registry.rules.map((entry) => entry.fingerprint), original.rules.map((entry) => entry.fingerprint), "no wording was re-confirmed");
+});
+
+test("a swap hidden among genuine rewording still stops bulk confirmation", () => {
+  const files = { [S12]: ["12. Service requirements", `12.1.a. ${TEST}`, `12.1.b. ${ENCRYPT}`, `12.1.c. ${OFFICER} They must report to the board.`] };
+  const rules = rulesOf(files);
+  const registry = registryFor(THREE);
+  const original = clone(registry);
+  const { wording, suspicious } = checkRegistry(registry, rules, { wordingOnly: true });
+  assert.deepEqual([wording.length, suspicious.length], [1, 2]);
+  assert.throws(() => run(registry, rules, "confirm", "--all-changed"), /another rule's confirmed wording/);
+  assert.deepEqual(registry, original, "not even the genuinely reworded rule is confirmed");
+  // Confirming one rule by name stays a human decision, and is allowed.
+  run(registry, rules, "confirm", "r0003");
+  assert.equal(checkRegistry(registry, rules, { wordingOnly: true }).wording.length, 0);
+});
+
+test("large-scale genuine rewording can still be confirmed in bulk, keeping every identity", () => {
+  const letters = "abcdefghijklmnopqrst".split("");
+  const before = { [S12]: ["12. Service requirements", ...letters.map((letter, i) => `12.1.${letter}. You must meet requirement number ${i + 1}.`)] };
+  const after = { [S12]: ["12. Service requirements", ...letters.map((letter, i) => `12.1.${letter}. You must meet and record requirement number ${i + 1}.`)] };
+  const registry = registryFor(before);
+  const rules = rulesOf(after);
+  const { wording, suspicious, other } = checkRegistry(registry, rules, { wordingOnly: true });
+  assert.deepEqual([wording.length, suspicious.length, other.length], [20, 0, 0]);
+  const done = run(registry, rules, "confirm", "--all-changed");
+  assert.equal(done.filter((line) => /confirmed its changed wording/.test(line)).length, 20);
+  assert.deepEqual(checkRegistry(registry, rules), []);
+  assert.deepEqual(registry.rules.map((entry) => [entry.id, entry.number]), letters.map((letter, i) => [`r${String(i + 1).padStart(4, "0")}`, `12.1.${letter}`]));
+});
+
 test("inserting a rule fails closed: identities never quietly follow the numbers to other rules", () => {
   // A new rule is inserted as 12.1.a, and the rules after it are renumbered.
   const inserted = { ...BASE, [S12]: ["12. Service requirements", "12.1.a. You must name a security officer.", `12.1.b. ${ENCRYPT}`, `12.1.c. ${TEST}`] };

@@ -266,17 +266,22 @@ function entryProblems(registry) {
  * Problems with the registry, as messages that say what to do. Empty if the
  * registry and the working draft agree. `rules` is frameworkRules(...).
  *
- * With `{ wordingOnly: true }` it returns { wording, other }: the changed
- * wording of registered rules, and every other problem. confirm
- * --all-changed uses this to refuse when anything else is wrong.
+ * With `{ wordingOnly: true }` it returns { wording, suspicious, other }:
+ * - wording: registered rules whose wording has changed;
+ * - suspicious: registered rules whose wording has changed to the confirmed
+ *   wording of another current rule, as when rules swap numbers;
+ * - other: every other problem.
+ * confirm --all-changed uses this to refuse unless every problem is in
+ * `wording`.
  */
 export function checkRegistry(registry, rules, { wordingOnly = false } = {}) {
   if (!registry || typeof registry !== "object" || !Array.isArray(registry.rules)) {
     const problem = `${REGISTRY_FILE} must be an object with a "rules" list.`;
-    return wordingOnly ? { wording: [], other: [problem] } : [problem];
+    return wordingOnly ? { wording: [], suspicious: [], other: [problem] } : [problem];
   }
   const { problems, entries } = entryProblems(registry);
   const wording = [];
+  const suspicious = [];
 
   // --- The registry against the working draft ---------------------------------
   const markdown = new Map();
@@ -328,11 +333,16 @@ export function checkRegistry(registry, rules, { wordingOnly = false } = {}) {
       );
     }
     if (entry.fingerprint !== rule.fingerprint) {
-      wording.push(
+      // Wording that is now the confirmed wording of another rule in the
+      // working draft is what a swap or other reshuffle of numbers looks like.
+      // It is not taken to mean anything, but it rules out confirming in bulk.
+      const elsewhere = (byFingerprint.get(rule.fingerprint) ?? []).some((other) => other !== entry);
+      (elsewhere ? suspicious : wording).push(
         `The wording of ${ruleLabel(rule)}, registered as ${entry.id}, has changed since it was last confirmed. Decide which applies:\n` +
           `  - It is still the same rule, with changed wording: run \`npm run rules -- confirm ${entry.id}\`, or set its "fingerprint" to "${rule.fingerprint}". Its identity stays the same.\n` +
           `  - A different rule now has this number: record what happened to ${entry.id} (renumber or retire it), and register the rule that has the number now.` +
-          sameWording(rule, entry),
+          sameWording(rule, entry) +
+          (elsewhere ? `\n  Because its wording is now another rule's confirmed wording, it cannot be confirmed with --all-changed. Decide about it on its own.` : ""),
       );
     }
   }
@@ -375,7 +385,7 @@ export function checkRegistry(registry, rules, { wordingOnly = false } = {}) {
   for (const [number] of acknowledged) {
     if ((holders.get(number)?.length ?? 0) < 2) problems.push(`"reusedNumbers" lists ${number}, but no more than one rule has used it. Remove that entry.`);
   }
-  return wordingOnly ? { wording, other: problems } : [...problems, ...wording];
+  return wordingOnly ? { wording, suspicious, other: problems } : [...problems, ...suspicious, ...wording];
 }
 
 /** The registry as it is written: one rule per line, so changes are easy to review. */

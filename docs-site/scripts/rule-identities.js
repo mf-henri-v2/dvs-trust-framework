@@ -74,10 +74,14 @@ export function apply(registry, rules, command, args) {
         // Only when changed wording is the only thing wrong. Anything else,
         // such as a missing identity, can mean rules have been renumbered,
         // and then the wording at a number may belong to a different rule.
-        const { other } = checkRegistry(registry, rules, { wordingOnly: true });
-        if (other.length) {
+        // So can wording that is now another rule's confirmed wording, as when
+        // rules swap numbers: nothing else looks wrong then, so confirming in
+        // bulk would quietly point each identity at the other rule.
+        const { other, suspicious } = checkRegistry(registry, rules, { wordingOnly: true });
+        if (other.length || suspicious.length) {
           throw new UsageError(
-            `confirm --all-changed only works when changed wording is the only problem. Resolve these first, then try again:\n\n${other.join("\n\n")}`,
+            `confirm --all-changed only works when changed wording is the only problem, and no rule's wording is now another rule's confirmed wording. ` +
+              `Resolve these first, one at a time, then try again:\n\n${[...other, ...suspicious].join("\n\n")}`,
           );
         }
         targets = registry.rules.filter((each) => !isRetired(each) && byNumber.get(each.number)?.fingerprint !== each.fingerprint);

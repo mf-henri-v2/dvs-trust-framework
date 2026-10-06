@@ -131,7 +131,7 @@ The Reading site workflow runs `npm run rules` (in `docs-site/`) before building
 - a rule's wording no longer matches its fingerprint;
 - a number has been used for more than one identity and that has not been acknowledged in `reusedNumbers`.
 
-The **fingerprint** is a guardrail, not the identity. Nothing matches rules by their wording. Its job is to catch wording that has moved to another number. For example, if a rule is inserted as 12.4.1.c and the rules after it become 12.4.1.d, e and f, the old identities would otherwise quietly follow the numbers to the wrong rules. When a rule's wording legitimately changes, a maintainer confirms it and the identity stays the same. The check may mention that a rule's wording matches another identity's, as a hint only: deciding whether two rules are the same is an editorial decision, and no tool makes it.
+The **fingerprint** is a guardrail, not the identity. Nothing matches rules by their wording. Its job is to catch wording that has moved to another number. For example, if a rule is inserted as 12.4.1.c and the rules after it become 12.4.1.d, e and f, the old identities would otherwise quietly follow the numbers to the wrong rules. When a rule's wording legitimately changes, a maintainer confirms it and the identity stays the same. The check may mention that a rule's wording matches another identity's, as a hint only: deciding whether two rules are the same is an editorial decision, and no tool makes it. Such a match does stop wording being confirmed in bulk, because a swap of two rules' numbers looks like nothing more than changed wording.
 
 The fingerprint is made from the rule's text as the site reads it. If a change to the site's Markdown rendering changes that text for many rules at once, every affected rule fails the check, and its wording must be confirmed again in that pull request.
 
@@ -142,7 +142,7 @@ Make these changes in the same pull request as the Markdown change. On your own 
 | You have… | Do this |
 | --- | --- |
 | Added a genuinely new rule | `npm run rules -- add 12.4.1.g` gives it the next identity. |
-| Changed a rule's wording | `npm run rules -- confirm r0254`. If many rules were reworded and nothing else changed, `npm run rules -- confirm --all-changed`. That refuses if anything else is wrong, such as a rule without an identity, because then some wording may have moved to a different number. |
+| Changed a rule's wording | `npm run rules -- confirm r0254`. If many rules were reworded and nothing else changed, `npm run rules -- confirm --all-changed`. That refuses if anything else is wrong, such as a rule without an identity, or if any rule's wording is now another rule's confirmed wording, as when rules swap numbers. In either case some wording may have moved to a different number, so decide about those rules one at a time: `renumber` them if they moved, or `confirm` them by name if they did not. |
 | Renumbered a rule, or moved it to another section | `npm run rules -- renumber r0254=12.4.1.d`. Give several at once when rules shift together: `renumber r0256=12.4.1.f r0255=12.4.1.e r0254=12.4.1.d`. The old number and file are added to its `history`. |
 | Removed a rule | `npm run rules -- retire r0254`. Its permanent link keeps working and says it has been removed. |
 | Replaced a rule with a different one | Add the new rule, then `npm run rules -- retire r0254 --replaced-by r0340`. |
