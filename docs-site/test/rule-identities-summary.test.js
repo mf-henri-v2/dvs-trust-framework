@@ -149,7 +149,7 @@ test("the step fails when the check fails, keeps the output in the log, and adds
   const run = runStep({ output: `${DECISION}\n`, status: 1 });
   assert.equal(run.status, 1, "the check still fails");
   assert.ok(run.stdout.includes(DECISION), "the command's output is still in the log");
-  assert.match(run.stdout, /^::error title=Rule identity decision required::A rule was added, reworded, renumbered, moved or removed\. See the job summary for how to record the decision in GitHub or locally\.$/m);
+  assert.match(run.stdout, /^::error title=Rule identity decision required::A rule was added, reworded, renumbered, moved or removed\. See this run's Summary page for how to record the decision in GitHub or locally.$/m);
   assert.match(run.summary, /^## Rule identity decision required\n/);
   assert.ok(run.summary.includes(DECISION));
   assert.match(run.summary, /choose this pull request's branch, `policy\/fraud-monitoring`/);
