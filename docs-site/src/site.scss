@@ -296,6 +296,41 @@ $app-target-colour: govuk-colour("yellow", $variant: "tint-80");
   }
 }
 
+// A permanent link (/rules/r0123/) goes to the rule's block (#rule-r0123),
+// which is highlighted the same way, without needing :has().
+.app-rule-block {
+  scroll-margin-top: govuk-spacing(4);
+}
+
+.app-rule-block:target {
+  background-color: $app-target-colour;
+  box-shadow: 0 0 0 govuk-spacing(2) $app-target-colour;
+}
+
+// If a rule's number has also been used for another rule, its block ends
+// with a note saying so. It is shown only to a reader who arrived through the
+// number anchor (#section-12_4_1_c), which is the link that cannot say which
+// rule it meant. A permanent link goes to the block instead, so it does not
+// show the note.
+.app-rule-reuse-note {
+  display: none;
+}
+
+.app-rule:target ~ .app-rule-reuse-note {
+  display: block;
+}
+
+// Former rule numbers at the end of a section: an older link to one of them
+// lands on it.
+.app-former-rule {
+  scroll-margin-top: govuk-spacing(4);
+}
+
+.app-former-rule:target {
+  background-color: $app-target-colour;
+  box-shadow: 0 0 0 govuk-spacing(2) $app-target-colour;
+}
+
 // Abbreviations from section 16 show their meaning on hover.
 abbr[title] {
   text-decoration: underline dotted;

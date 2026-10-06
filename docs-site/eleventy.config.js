@@ -14,6 +14,7 @@ import { feedbackUrl, markdownLink, siteAddress, ruleGroups } from "./lib/feedba
 import { frameworkChanges } from "./lib/changes.js";
 import { buildSearchIndex } from "./lib/search.js";
 import { pageContents, contentsLength } from "./lib/contents.js";
+import { loadRuleIdentities } from "./lib/rule-identities.js";
 import site from "./_data/site.js";
 
 const SITE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -70,6 +71,7 @@ export default function (eleventyConfig) {
     "../media": "media",
     "assets/init.js": "assets/init.js",
     "assets/rule-actions.js": "assets/rule-actions.js",
+    "assets/rule-forward.js": "assets/rule-forward.js",
     "assets/rule-links.js": "assets/rule-links.js",
     "assets/rule-filter.js": "assets/rule-filter.js",
     "assets/rule-picker-filter.js": "assets/rule-picker-filter.js",
@@ -110,13 +112,15 @@ export default function (eleventyConfig) {
   };
   eleventyConfig.addFilter("partOf", partOf);
   // The search index (/search-index.json), made from the trust framework sections. See lib/search.js.
-  eleventyConfig.addFilter("searchIndex", (sections) =>
+  eleventyConfig.addFilter("searchIndex", (sections, identities) =>
     JSON.stringify(
       buildSearchIndex(
         sections.map((item) => {
           const part = site.parts.find((each) => each.number === partOf(item.data.repoPath));
           return { url: item.url, title: item.data.title, repoPath: item.data.repoPath, part: part && `Part ${part.number}: ${part.title}` };
         }),
+        undefined,
+        identities,
       ),
     ),
   );
@@ -127,6 +131,17 @@ export default function (eleventyConfig) {
   // The rules in a page, for its rule picker.
   eleventyConfig.addFilter("ruleGroups", ruleGroups);
   eleventyConfig.addGlobalData("repositoryUrl", REPOSITORY_URL);
+
+  // Each rule's permanent identity, from rule-identities.json, and where it is
+  // now. Read again for every build. If the registry and the trust framework
+  // disagree, the build stops and says what to decide. See lib/rule-identities.js.
+  eleventyConfig.addGlobalData("ruleIdentities", () => loadRuleIdentities(path.resolve(SITE_DIR, "..")));
+  // On a "What's changed" page, where a removed rule's number leads now: the
+  // permanent page of the one identity that had it, if no rule has it now.
+  eleventyConfig.addFilter("formerRuleHref", (number, identities) => {
+    const holders = identities.formerHolders[number];
+    return !identities.byNumber[number] && holders?.length === 1 ? holders[0].permanentUrl : null;
+  });
 
   const changes = loadFrameworkChanges();
   eleventyConfig.addGlobalData("frameworkChanges", changes);

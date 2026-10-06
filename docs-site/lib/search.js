@@ -180,8 +180,22 @@ export function searchEntries(source, repoPath, page = 0) {
  * section is { url, title, repoPath, part }, where url is the page's site
  * address (for example /trust-framework-1.0/part-3/12-service-requirements/)
  * and part is the title of its part, if it has one.
+ *
+ * With the rule identities (lib/rule-identities.js), each rule's entry also
+ * has its permanent identity (id), and the index lists the rule numbers that
+ * are no longer used as they were:
+ *
+ * - former: each number that one or more identities used to have, and which
+ *   ones, so that a search for an old number can say what it is now;
+ * - identities: each identity that is not a rule in the working draft
+ *   (retired) or that has had another number, with its status and its
+ *   current or last number.
  */
-export function buildSearchIndex(sections, readSource = (repoPath) => fs.readFileSync(new URL(`../../${repoPath}`, import.meta.url), "utf-8")) {
+export function buildSearchIndex(
+  sections,
+  readSource = (repoPath) => fs.readFileSync(new URL(`../../${repoPath}`, import.meta.url), "utf-8"),
+  identities = null,
+) {
   const pages = [];
   const entries = [];
   for (const section of sections) {
@@ -190,5 +204,13 @@ export function buildSearchIndex(sections, readSource = (repoPath) => fs.readFil
     entries.push({ page, kind: "page", ref: HEADING_NUMBER.exec(section.title)?.[1], title: section.title });
     entries.push(...searchEntries(readSource(section.repoPath), section.repoPath, page));
   }
-  return { pages, entries };
+  if (!identities) return { pages, entries };
+  for (const entry of entries) {
+    if (entry.kind === "rule") entry.id = identities.byNumber[entry.ref];
+  }
+  const former = Object.entries(identities.formerHolders).map(([ref, holders]) => ({ ref, ids: holders.map((holder) => holder.id) }));
+  const listed = identities.list
+    .filter((identity) => identity.status !== "current" || identity.history.length)
+    .map((identity) => ({ id: identity.id, status: identity.status, ref: identity.number }));
+  return { pages, entries, former, identities: listed };
 }

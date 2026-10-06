@@ -14,7 +14,7 @@
 //   to explain abbreviations, and renders the bold row headings in the
 //   section 15 table as table row headers, as the GOV.UK publication does;
 // - gives each numbered rule (for example 12.4.1.c) an anchor, and marks it
-//   for rule-level feedback;
+//   for rule-level feedback, with its permanent identity;
 // - gives each glossary term an anchor, so search results can link to it.
 
 import path from "node:path";
@@ -187,12 +187,25 @@ function boldRowHeaders(md) {
 //   as a Markdown link to it), and the heading it comes under. The page's rule
 //   picker and assets/rule-actions.js use them.
 //
-// Both are made when the site is built, so new rules get them automatically.
-// The tests fail if a paragraph looks like a rule but does not match.
+// When the site is built, Eleventy passes the rule identities
+// (lib/rule-identities.js) as `ruleIdentities`. Each block then also has the
+// rule's permanent identity (data-rule-id) and an anchor made from it
+// (rule-r0123), which the rule's permanent address goes to, and the feedback
+// value links to the permanent address instead of the number anchor. The
+// number anchor stays, for links that use it. If the rule's number has also
+// been used for another rule, the block ends with a note saying so.
+//
+// Anchors and blocks are made when the site is built, so new rules get them
+// automatically. A new rule's identity is recorded by a maintainer (see
+// lib/rule-identities.js). The tests fail if a paragraph looks like a rule
+// but does not match.
 export const RULE_NUMBER = /^(\d+(?:\.\d+)+(?:\.[a-z]+)+)\.?(?=\s|$)/;
 
 /** The anchor for a rule number: "12.4.1.c" becomes "section-12_4_1_c". */
 export const ruleAnchor = (number) => `section-${number.replace(/\./g, "_")}`;
+
+/** The anchor of a rule's block, from its permanent identity: "r0123" becomes "rule-r0123". */
+export const identityAnchor = (id) => `rule-${id}`;
 
 /**
  * Where the numbered rules are in a list of block tokens: ruleAt(i) is the
@@ -221,18 +234,50 @@ function rules(md) {
     const { ruleAt, endsRule } = ruleBoundaries(tokens);
     const html = (content) => Object.assign(new state.Token("html_block", "", 0), { content });
     const attr = (value) => md.utils.escapeHtml(value);
+    const identities = withFeedback ? state.env?.ruleIdentities : undefined;
+    const identityOf = (number) => {
+      if (!identities) return null;
+      const identity = identities.byId[identities.byNumber[number]];
+      // The build checks the registry before rendering, so this means that check was skipped.
+      if (!identity) throw new Error(`Rule ${number} (${repoPath}) has no permanent identity in rule-identities.json.`);
+      return identity;
+    };
     const blockStart = (number, heading) => {
-      const reference = markdownLink(number, siteAddress(siteUrlFor(repoPath), ruleAnchor(number)));
+      const identity = identityOf(number);
+      const target = identity ? siteAddress(identity.permanentUrl) : siteAddress(siteUrlFor(repoPath), ruleAnchor(number));
+      const reference = markdownLink(number, target);
+      const permanent = identity ? ` id="${attr(identityAnchor(identity.id))}" data-rule-id="${attr(identity.id)}"` : "";
       return html(
-        `<div class="app-rule-block" data-rule="${attr(number)}" data-reference="${attr(reference)}" data-heading="${attr(heading)}">\n`,
+        `<div class="app-rule-block" data-rule="${attr(number)}" data-reference="${attr(reference)}" data-heading="${attr(heading)}"${permanent}>\n`,
       );
+    };
+    // The other rules that have had this rule's number on this page, which an
+    // older link to its number anchor may have meant. Shown only to a reader
+    // who arrived through the number anchor (see src/site.scss).
+    const reuseNote = (number) => {
+      const others = identityOf(number)?.sharedWith;
+      if (!others) return [];
+      const items = others.map((other) => {
+        const text =
+          other.status === "retired"
+            ? `a rule that has been removed from the working draft (it was ${attr(other.number)} when it was removed)`
+            : `rule ${attr(other.number)}`;
+        return `<li><a class="govuk-link" href="${attr(other.href)}">${text}</a></li>`;
+      });
+      return [
+        html(
+          `<div class="govuk-inset-text app-rule-reuse-note">\n<p class="govuk-body-s">The number ${attr(number)} has also been used for another rule. ` +
+            `If you followed an older link to ${attr(number)}, you may have been looking for:</p>\n` +
+            `<ul class="govuk-list govuk-list--bullet govuk-body-s">\n${items.join("\n")}\n</ul>\n</div>\n`,
+        ),
+      ];
     };
     const out = [];
     let current = null;
     let heading = "";
     for (let i = 0; i < tokens.length; i++) {
       if (current && endsRule(i)) {
-        if (withFeedback) out.push(html("</div>\n"));
+        if (withFeedback) out.push(...reuseNote(current), html("</div>\n"));
         current = null;
       }
       if (tokens[i].type === "heading_open") heading = plainText(tokens[i + 1]);
@@ -245,7 +290,7 @@ function rules(md) {
       }
       out.push(tokens[i]);
     }
-    if (current && withFeedback) out.push(html("</div>\n"));
+    if (current && withFeedback) out.push(...reuseNote(current), html("</div>\n"));
     state.tokens = out;
   });
 }

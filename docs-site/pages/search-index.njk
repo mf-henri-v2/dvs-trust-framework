@@ -3,4 +3,4 @@ permalink: /search-index.json
 layout: false
 eleventyExcludeFromCollections: true
 ---
-{{ collections.sections | searchIndex | safe }}
+{{ collections.sections | searchIndex(ruleIdentities) | safe }}

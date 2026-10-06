@@ -34,7 +34,7 @@ On the [reading site](https://ofdia-uk.github.io/dvs-trust-framework/), the feed
 - **About a page or section in general:** choose "give feedback on this draft" in the Draft banner at the top of any page. On a trust framework page, the form opens with that page filled in. The "Give feedback on GitHub" link at the bottom of each section does the same.
 - **About a specific rule:** point to or tap the rule, then choose the "Give feedback on" link that appears for it, for example "Give feedback on 12.4.1.c". You can also use "Give feedback on a specific rule" at the bottom of the section: choose the rule from the list, then continue to GitHub. You can narrow the list by typing a rule number, such as 12.4.1, or a word from a heading.
 - **To find a rule:** use [Search](https://ofdia-uk.github.io/dvs-trust-framework/search/) with its number, for example 12.4.1.c.
-- **To quote a rule somewhere else,** such as in an email or a comment: use "Copy link" or "Copy reference" next to the rule's feedback link.
+- **To quote a rule somewhere else,** such as in an email or a comment: use "Copy link" or "Copy reference" next to the rule's feedback link. "Copy link" gives a permanent link, which still goes to the rule if it is later renumbered or moved.
 
 ### Start from GitHub
 

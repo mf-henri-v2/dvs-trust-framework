@@ -12,7 +12,7 @@ The site has no copy of the text. [Eleventy](https://www.11ty.dev/) renders the 
 - It uses the first heading as the page title, and keeps the other headings in order without skipping levels.
 - It points links between Markdown files at the matching site pages. Links to other repository files go to GitHub.
 - It uses the abbreviation definitions kept in a hidden comment in section 16 to explain abbreviations on hover. It renders the bold row headings in the section 15 table as table row headers. Both match GOV.UK.
-- It gives each numbered rule (for example 12.4.1.c) an anchor made from its number, such as `#section-12_4_1_c`, and marks it for rule-level feedback and copying. See [Feedback links](#feedback-links) and [Rule links and references](#rule-links-and-references).
+- It gives each numbered rule (for example 12.4.1.c) an anchor made from its number, such as `#section-12_4_1_c`, and marks it for rule-level feedback and copying, with its permanent identity. See [Feedback links](#feedback-links), [Rule links and references](#rule-links-and-references) and [Permanent rule links](#permanent-rule-links).
 - It gives each glossary term in section 16 an anchor made from the term, such as `#term-identity-repair`, so that search results can link to it.
 - It applies GOV.UK Frontend styles.
 
@@ -28,13 +28,13 @@ Every feedback link opens the issue template chooser on GitHub, so the reader st
 
 - **Page:** the "Give feedback on GitHub" link at the bottom of each trust framework page fills in the page title as a link to the page. It works without JavaScript.
 - **From anywhere:** the "Draft" status banner at the top of every page ends "or give feedback on this draft", so general feedback can be started without scrolling to the bottom or going back to the home page. It is visible on phones without opening the menu. On a trust framework page it fills in that page, exactly as the page's own "Give feedback on GitHub" link does, so no rule is named. On other pages, such as the home page, search and "What's changed", it fills in nothing. It is made when the site is built, so it works without JavaScript. The header's "Give feedback" item still goes to the guidance page. The site check fails if a page's banner has no feedback link, or fills in the wrong page.
-- **Rule:** pointing to a rule highlights it and shows a "Give feedback on 12.4.1.c" link beside it, with the copy buttons described in [Rule links and references](#rule-links-and-references). On a touch screen, tapping a rule does the same, and tapping it again or elsewhere clears it. The link fills in the rule number as a Markdown link to the rule, for example `[12.4.1.c](https://…/12-service-requirements/#section-12_4_1_c)`, so the issue shows "12.4.1.c" as a link. There is only one set of these at a time, so the rules add nothing to the Tab order. [`assets/rule-actions.js`](assets/rule-actions.js) does this.
+- **Rule:** pointing to a rule highlights it and shows a "Give feedback on 12.4.1.c" link beside it, with the copy buttons described in [Rule links and references](#rule-links-and-references). On a touch screen, tapping a rule does the same, and tapping it again or elsewhere clears it. The link fills in the rule's current number as a Markdown link to its permanent link, for example `[12.4.1.c](https://…/rules/r0254/)`, so the issue shows "12.4.1.c" as a link that still goes to the rule if it is later renumbered or moved. There is only one set of these at a time, so the rules add nothing to the Tab order. [`assets/rule-actions.js`](assets/rule-actions.js) does this.
 - **Rule picker:** for keyboard and screen reader users, and without JavaScript, each page with rules has a "Give feedback on a specific rule" form at the bottom, with a dropdown of its rules grouped by heading. A skip link to it appears at the top of the page when it has keyboard focus. With JavaScript, "Continue to GitHub" with no rule chosen shows an error and moves focus to the dropdown instead of opening an empty form.
 - **Filtering the picker:** with JavaScript, the picker gets a "Filter the rules in this section" box. Typing a rule number, whole or in part (`12.4.1`, `Rule 12.4.1.c`), or a word from a heading (`fraud`) narrows the same dropdown to the rules that match, under their headings, and says how many match. Numbers match whole parts, so `2.1.1` does not match 2.1.10.a. It looks only at the numbers and headings already in the dropdown; it is not a search of the rules' text. Typing never chooses a rule, submits or copies anything, or moves focus, and pressing Enter in the box does nothing. Any change to the box clears the chosen rule and says so, so the buttons can never act on a rule chosen before the filter changed. "Clear filter", or emptying the box, puts every rule back in its place. Tapping a rule on the page that the filter is hiding clears the filter and chooses that rule. [`assets/rule-picker-filter.js`](assets/rule-picker-filter.js) does this, with the matching in [`assets/rule-filter.js`](assets/rule-filter.js), which the tests check. It is a separate script, so if it does not load the rule actions still work, and the other way round. The filter is added only once it is ready; if anything goes wrong later, every rule is put back in the dropdown in its original order and the filter is removed.
 
 A link to a rule anchor highlights the whole rule in pale yellow: its first paragraph and everything that belongs to it, such as its list, table or figures, and nothing of the next rule. The highlight uses the rule's block, so it follows the same rule boundaries as feedback (`ruleBoundaries` in `lib/markdown.js`). It is done in CSS (`:has()` and `:target`), so it needs no JavaScript and follows links on the page and Back and Forward. Browsers without `:has()` highlight the first paragraph only. For example, 4.1.b includes its table (Figure 1), 4.3.c its Figures 2 and 3, and 12.9.b its Figure 4, because they belong to those rules. Every block holds exactly one rule, and the site check fails otherwise.
 
-All of this is made when the site is built. A rule is a paragraph that starts with its number, such as "12.4.1.c." or "12.4.1.c", so new rules get an anchor and feedback route automatically. The Markdown is not changed. The tests fail if a paragraph looks like a numbered rule but the renderer does not recognise it, if a rule is missing its anchor or feedback route, or if an ID is repeated. The site check does the same on the built pages.
+All of this is made when the site is built. A rule is a paragraph that starts with its number, such as "12.4.1.c." or "12.4.1.c", so new rules get an anchor and feedback route automatically. A new rule also needs a permanent identity, which a maintainer records in `rule-identities.json`; until then the build says so and stops (see [Permanent rule links](#permanent-rule-links)). The Markdown is not changed. The tests fail if a paragraph looks like a numbered rule but the renderer does not recognise it, if a rule is missing its anchor or feedback route, or if an ID is repeated. The site check does the same on the built pages.
 
 The addresses in the links use `SITE_URL`. The Reading site workflow sets it to the GitHub Pages address of the repository it runs in. Without it, the address of the OfDIA site is used.
 
@@ -43,6 +43,8 @@ The addresses in the links use `SITE_URL`. The Reading site workflow sets it to 
 The search page (`/search/`) finds a rule or section by its number, and passages by the words in them. A search form on the home page and a "Search" link in the navigation lead to it.
 
 **Rule and section numbers.** A search for `12.4.1.c` or `Rule 12.4.1.C.` finds rule 12.4.1.c. Case, spaces, a full stop at the end and a leading "rule" or "section" do not matter. Sections (`12`) and subsections (`12.4`, `12.4.1`) work too. The page shows the rule first, with the headings it comes under and the start of its text, then a "Go to rule 12.4.1.c" link to the rule's anchor, and any other passages that mention it. A number that does not exist says so, and offers the nearest section that does exist, by name. Search never goes to a different rule without saying so. Numbered paragraphs at the start of a section, such as 13.a, are not rules on the site and have no anchor, so they link to the start of their section.
+
+**Former numbers and permanent identities.** A search for a number that a rule used to have says what the rule is now ("Rule 12.4.1.c is now rule 12.4.1.d"), or that it has been removed, with a link to its permanent link. If the number has been used for more than one rule, search lists them all and does not choose. If a rule has the number now, it is shown first, followed by the other rules that have had the number. A search for a permanent identifier, such as `r0254`, finds that rule. Results found this way link to the rule's block (`#rule-r0254`), as its permanent link does.
 
 **Words.** Every word searched for must be in the passage or in the headings it comes under. Common words such as "the" are ignored, letters and digits are split ("GPG45" is "GPG 45"), and a plural matches its singular ("biometrics" finds "biometric"). Matches in headings and glossary terms, and the words together as a phrase, come first. Each result links to the passage: a rule to its anchor, a glossary term to the term, other paragraphs to the heading they come under, and rows of the table of standards to section 15.
 
@@ -60,7 +62,7 @@ The index has only the numbered sections. It leaves out the contents pages, the 
 
 ### Maintaining search
 
-Nothing needs updating by hand. New or renumbered rules, headings and glossary terms are found when the site is built. The tests fail if a rule or numbered heading cannot be found by its number, if an index entry links to an anchor the page does not have, or if site navigation or feedback text gets into the index. The site check does the same on the built site.
+The index needs no updating by hand: new or renumbered rules, headings and glossary terms are found when the site is built. (Renumbering a rule does need its permanent identity updating; see [Permanent rule links](#permanent-rule-links).) The tests fail if a rule or numbered heading cannot be found by its number, if an index entry links to an anchor the page does not have, or if site navigation or feedback text gets into the index. The site check does the same on the built site.
 
 Search matches words only. It does not know synonyms, so "ID" does not find "identity". To change how results are ranked, edit `search` in `assets/search-core.js` and check the example searches in `test/search.test.js`.
 
@@ -72,10 +74,10 @@ Each page with three or more headings starts with an "On this page" list ([`lib/
 
 With a rule's feedback link, readers get two buttons:
 
-- **Copy link** copies the address of the rule: the page being read, at the rule's anchor, for example `https://ofdia-uk.github.io/dvs-trust-framework/trust-framework-1.0/part-3/12-service-requirements/#section-12_4_1_c`. It is made from the page's own address, so it is right at `/`, under `/dvs-trust-framework/` and in a fork, and it drops any query.
-- **Copy reference** copies the rule's citation, for example `Rule 12.4.1.c`.
+- **Copy link** copies the rule's permanent link, for example `https://ofdia-uk.github.io/dvs-trust-framework/rules/r0254/`. It keeps working if the rule is renumbered or moved. See [Permanent rule links](#permanent-rule-links). It is made from the address of the site being read, so it is right at `/`, under `/dvs-trust-framework/` and in a fork.
+- **Copy reference** copies the rule's citation by its current number, for example `Rule 12.4.1.c`.
 
-The number comes from the rule block's `data-rule` and the anchor from the id of the rule's own paragraph, as the renderer wrote them, never from the rule's position. [`assets/rule-links.js`](assets/rule-links.js) works these out, and the tests check them.
+The number comes from the rule block's `data-rule` and the identity from its `data-rule-id`, as the renderer wrote them, never from the rule's position. [`assets/rule-links.js`](assets/rule-links.js) works these out, and the tests check them.
 
 - **Who can use them.** The buttons appear with the feedback link for the rule that is pointed to or tapped, and for the rule the page was opened at or a link on the page went to. Pressing Tab from a linked rule reaches them, after any links in the rule itself. Focus is never moved there on its own. The rule picker at the bottom of the page also gets copy buttons for the chosen rule, so a keyboard user can copy any rule. The buttons' names include the rule, for example "Copy link to rule 12.4.1.c".
 - **Staying put.** While focus is in the buttons, while a copy is in progress, or while the "copy it yourself" box is open, they stay with their rule: pointing to another rule does not move them. Each copy works out its rule and text when the button is pressed.
@@ -85,6 +87,25 @@ The number comes from the rule block's `data-rule` and the anchor from the id of
 
 None of this text is in the search index, which is made from the Markdown.
 
+## Permanent rule links
+
+Each rule has a permanent identity, such as `r0254`, recorded in [`rule-identities.json`](../rule-identities.json). The identity stays the same when the rule's number, wording, section or position changes. [ARCHITECTURE.md](../ARCHITECTURE.md#rule-identities) explains the registry and how maintainers keep it up to date. [`lib/rule-identities.js`](lib/rule-identities.js) reads it, checks it against the Markdown, and works out where each identity is now. It finds the rules with `ruleBoundaries`, through the search index's parsing, so a rule is the same everywhere on the site. If the registry and the Markdown disagree, the build stops and says what a maintainer needs to decide. `npm run rules` runs the same check on its own; see [Run it locally](#run-it-locally).
+
+**The current number and the permanent identity.** Readers see and cite the current number: "Rule 12.4.1.c". The identity is in the rule's block as `data-rule-id`, and the block has an anchor made from it, such as `#rule-r0254`.
+
+**The permanent link** is `/rules/r0254/`. Every identity has a page there ([`pages/rule-identity.njk`](pages/rule-identity.njk)), made from the Markdown and the registry when the site is built:
+
+- **For a rule in the working draft,** the page names the rule by its current number, says which section and heading it is under and any numbers it had before, shows the start of its text, and links to it ("Go to rule 12.4.1.c"). With JavaScript, [`assets/rule-forward.js`](assets/rule-forward.js) goes straight to the rule's block on its page (`…/12-service-requirements/#rule-r0254`), replacing the permanent link in the browser history so that Back works as expected. Without JavaScript the reader follows the link. GitHub Pages cannot redirect, so this is how the link reaches the rule.
+- **Arriving at the rule,** the reader gets what a number anchor gives: the whole rule highlighted, its feedback link and copy buttons shown after it, and Tab reaching them.
+- **For a retired rule,** the page says the rule has been removed, the number it had, and the rules that replace it, if any, with their permanent links. It never sends the reader anywhere on its own.
+
+**Number anchors.** Every rule keeps its number anchor (`#section-12_4_1_c`), so links that use it keep working. When a rule has been renumbered, moved or retired, its old anchor is kept in a "Former rule numbers" list at the end of the page it was on, saying where the rule is now. A number on that page that a rule has now is never listed again, so no anchor is repeated. Where a number has been used for more than one rule:
+
+- if a rule on the page has it now, the number anchor goes there, and the rule ends with a note naming the other rules that had the number on that page. The note is shown only to a reader who arrived through the number anchor (`.app-rule:target ~ .app-rule-reuse-note` in [`src/site.scss`](src/site.scss)), so it needs no JavaScript. A permanent link goes to the block's own anchor, so it does not show the note;
+- otherwise the "Former rule numbers" entry lists every rule that had it, without choosing one.
+
+The site check confirms that every rule has an identity on exactly one block, with the anchor made from it and a feedback reference to its permanent link. It also confirms that every identity in the registry has a page with the same status, that each current rule's page links to exactly that rule's block, and that a retired rule's page links to no rule.
+
 ## Changes to the trust framework
 
 The "What's changed" page (`/changes/`) tells readers whether the trust framework has changed since its baseline, the tag named in [`framework-baseline.json`](../framework-baseline.json) (initially `published-1.0`). [`lib/changes.js`](lib/changes.js) works this out from Git when the site is built:
@@ -92,7 +113,7 @@ The "What's changed" page (`/changes/`) tells readers whether the trust framewor
 - Only the files in `trust-framework-1.0/` count. Their caution banner and "Repository navigation" footer are removed first, so changing those is not a change to the trust framework. Changes anywhere else in the repository are ignored.
 - A file has changed only if it looks different on the site. Both versions are rendered as the site renders them. Whitespace a browser does not show, such as extra blank lines or double spaces, and HTML comments are ignored. Whitespace that matters, such as a hard line break or spacing inside code, still counts.
 - The page compares the current working draft with the baseline, and says that changes in the working draft do not by themselves change the published trust framework. If nothing has changed, it says the working draft contains no changes compared with the baseline.
-- If something has changed, the page lists the changed sections and the date the content last changed on `main`. Repository-only commits never change that date. Each changed section has a page showing the changed paragraphs and rule numbers linked to the rule:
+- If something has changed, the page lists the changed sections and the date the content last changed on `main`. Repository-only commits never change that date. Each changed section has a page showing the changed paragraphs and rule numbers linked to the rule. A removed rule's number links to its permanent link if exactly one rule had that number and no rule has it now:
   - **wording changes:** removed words struck through and added words underlined;
   - **link changes:** the link's old and new destination;
   - **formatting changes:** marked as formatting, with the wording and links the same.
@@ -117,7 +138,7 @@ The site is not part of GOV.UK. Following the GOV.UK Design System rules for ser
 
 The [Reading site workflow](../.github/workflows/site.yml) runs on every pull request and every change to `main`:
 
-- On a pull request it builds the site, tests the rendering and checks every page. The checks cover internal links, form addresses and anchors, unique IDs, heading order, image alt text, the draft banner, an anchor and feedback route for every numbered rule, a consistent "What's changed" page, a search index whose every entry links to an anchor that exists, a search page that offers another way to find a rule until search has started, and a site navigation that marks the current page with `aria-current="page"`. Nothing is published.
+- On a pull request it checks the rule identities, builds the site, tests the rendering and checks every page. The checks cover internal links, form addresses and anchors, unique IDs, heading order, image alt text, the draft banner, an anchor and feedback route for every numbered rule, a permanent link page for every rule identity that goes to the right rule, a consistent "What's changed" page, a search index whose every entry links to an anchor that exists, a search page that offers another way to find a rule until search has started, and a site navigation that marks the current page with `aria-current="page"`. Nothing is published.
 - On `main` it does the same and then publishes the site to GitHub Pages.
 
 Publishing needs GitHub Pages enabled for the repository, with **GitHub Actions** as the source (Settings, Pages).
@@ -130,6 +151,7 @@ You need Node.js 24 (see [`.nvmrc`](.nvmrc)) and Python 3.
 cd docs-site
 npm ci
 npm start          # build the stylesheet, then serve the site at http://localhost:8080/ and rebuild on changes
+npm run rules      # check that every rule has its permanent identity (see ARCHITECTURE.md)
 npm test           # test the Markdown rendering
 npm run build      # build once into _site/
 python3 ../tools/check_site.py _site
@@ -143,6 +165,8 @@ python3 ../tools/check_site.py _site
 | `lib/markdown.js` | How the Markdown is rendered |
 | `lib/changes.js` | What has changed in the trust framework since its baseline, for the "What's changed" pages |
 | `lib/feedback.js` | Feedback link addresses, and the rules listed in each page's rule picker |
+| `lib/rule-identities.js` | Each rule's permanent identity: checking `rule-identities.json` against the Markdown, and where each identity is now |
+| `scripts/rule-identities.js` | `npm run rules`: check and maintain `rule-identities.json` |
 | `lib/contents.js` | The "On this page" list |
 | `lib/search.js` | The search index, made from the trust framework sections |
 | `_includes/layouts/` | Page templates: `base.njk` for every page, `page.njk` for pages rendered from Markdown |
@@ -150,11 +174,13 @@ python3 ../tools/check_site.py _site
 | `pages/index.njk` | The home page |
 | `pages/changes.njk`, `pages/changes-section.njk` | The "What's changed" page, and a page for each changed section |
 | `pages/search.njk`, `pages/search-index.njk` | The search page, and the search index it loads |
+| `pages/rule-identity.njk` | The permanent link page for each rule (`/rules/r0254/`) |
 | `_includes/components/search-form.njk` | The search form, used on the home page and the search page |
 | `src/site.scss` | GOV.UK Frontend settings and the site's own styles |
 | `assets/init.js` | Starts GOV.UK Frontend's JavaScript |
 | `assets/rule-actions.js` | Shows the feedback link and copy buttons for the rule in use, and adds copy buttons to the rule picker |
 | `assets/rule-links.js` | What "Copy link" and "Copy reference" copy |
+| `assets/rule-forward.js` | Takes a permanent link straight to the rule |
 | `assets/rule-picker-filter.js`, `assets/rule-filter.js` | The rule picker's filter, and which rules match it |
 | `assets/search-core.js`, `assets/search.js` | Search: finding rules and passages, and showing the results |
-| `test/` | Tests for the Markdown rendering, rule anchors, feedback links, rule links, the rule picker's filter, the "On this page" list, changes and search |
+| `test/` | Tests for the Markdown rendering, rule anchors, rule identities, feedback links, rule links, the rule picker's filter, the "On this page" list, changes and search |

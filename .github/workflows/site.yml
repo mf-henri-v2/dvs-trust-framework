@@ -51,6 +51,13 @@ jobs:
         working-directory: docs-site
         run: npm ci
 
+      # Every rule must have exactly one permanent identity in
+      # rule-identities.json. If not, this step says what a maintainer needs
+      # to decide (see ARCHITECTURE.md, under Rule identities).
+      - name: Check rule identities
+        working-directory: docs-site
+        run: npm run rules
+
       - name: Test the Markdown rendering
         working-directory: docs-site
         run: npm test
@@ -59,7 +66,7 @@ jobs:
         working-directory: docs-site
         run: npm run build
 
-      - name: Check links, anchors, IDs, headings, rule feedback, change status and the draft banner
+      - name: Check links, anchors, IDs, headings, rule feedback, permanent rule links, change status and the draft banner
         run: python3 tools/check_site.py docs-site/_site --path-prefix "$PATH_PREFIX"
 
       - name: Upload the site for publishing

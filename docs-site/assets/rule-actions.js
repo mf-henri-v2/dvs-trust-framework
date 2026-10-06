@@ -1,5 +1,6 @@
 // Rule actions: for one rule at a time, a "Give feedback on 12.4.1.c" link
-// and buttons to copy a link to the rule and its reference ("Rule 12.4.1.c").
+// and buttons to copy a link to the rule (its permanent address, such as
+// /rules/r0123/) and its reference ("Rule 12.4.1.c").
 //
 // - Pointer: point to a rule to highlight it and show its actions. Moving
 //   away hides them again.
@@ -22,7 +23,10 @@
 // Nothing here is needed to read the page. Without JavaScript the picker's
 // "Continue to GitHub" still works and none of these controls are shown.
 
-import { ruleLink, ruleReference, ruleOf } from "./rule-links.js";
+import { ruleCopyLink, ruleReference, ruleOf } from "./rule-links.js";
+
+// This file is in /assets/, one level below the home page, wherever the site is published.
+const SITE_ROOT = new URL("../", import.meta.url);
 
 const picker = document.querySelector(".app-rule-picker");
 const blocks = [...document.querySelectorAll(".app-rule-block")];
@@ -58,7 +62,8 @@ if (picker && blocks.length) {
       suffix: (which) => ` to ${which}`,
       label: (number) => `Link to rule ${number}`,
       copied: "Link copied",
-      value: (rule) => ruleLink(window.location.href, rule.anchor),
+      // The rule's permanent address, which still works if it is renumbered or moved.
+      value: (rule) => ruleCopyLink(rule, window.location.href, SITE_ROOT),
     },
     reference: {
       button: "Copy reference",
@@ -219,7 +224,11 @@ if (picker && blocks.length) {
     if (!action.contains(event.relatedTarget)) setTimeout(update);
   });
 
-  /** The rule the page address points to, if any. A fragment that is not a rule, or not valid, points to none. */
+  /**
+   * The rule the page address points to, if any: its number anchor
+   * (#section-12_4_1_c) or its block (#rule-r0123, where a permanent link
+   * goes). A fragment that is not a rule, or not valid, points to none.
+   */
   const linkedBlock = () => {
     let id;
     try {
@@ -228,6 +237,7 @@ if (picker && blocks.length) {
       return null; // for example "#%"
     }
     const target = id ? document.getElementById(id) : null;
+    if (target?.classList.contains("app-rule-block")) return target;
     return target?.classList.contains("app-rule") ? target.closest(".app-rule-block") : null;
   };
   const followLink = () => {

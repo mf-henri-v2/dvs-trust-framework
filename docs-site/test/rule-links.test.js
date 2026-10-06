@@ -6,12 +6,25 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { markdownLibrary, stripRepositoryFurniture, ruleAnchor } from "../lib/markdown.js";
-import { ruleLink, ruleReference } from "../assets/rule-links.js";
+import { ruleLink, ruleReference, permanentRuleLink, ruleCopyLink } from "../assets/rule-links.js";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SECTION_12 = "trust-framework-1.0/part-3/12-service-requirements/";
 
-test("the link is the page being read, at the rule's own anchor, wherever the site is published", () => {
+test("Copy link copies the rule's permanent address, wherever the site is published", () => {
+  assert.equal(permanentRuleLink("http://localhost:8080/", "r0254"), "http://localhost:8080/rules/r0254/");
+  assert.equal(permanentRuleLink("https://ofdia-uk.github.io/dvs-trust-framework/", "r0254"), "https://ofdia-uk.github.io/dvs-trust-framework/rules/r0254/");
+  // It does not depend on the page being read or the rule's number anchor.
+  const rule = { number: "12.4.1.c", id: "r0254", anchor: "section-12_4_1_c" };
+  assert.equal(
+    ruleCopyLink(rule, `https://ofdia-uk.github.io/dvs-trust-framework/${SECTION_12}?from=email#section-12_4`, "https://ofdia-uk.github.io/dvs-trust-framework/"),
+    "https://ofdia-uk.github.io/dvs-trust-framework/rules/r0254/",
+  );
+  // A rule without an identity (which the build does not allow) falls back to its number anchor.
+  assert.equal(ruleCopyLink({ ...rule, id: "" }, `http://localhost:8080/${SECTION_12}`, "http://localhost:8080/"), `http://localhost:8080/${SECTION_12}#section-12_4_1_c`);
+});
+
+test("the fallback link is the page being read, at the rule's own anchor, wherever the site is published", () => {
   assert.equal(ruleLink(`http://localhost:8080/${SECTION_12}`, "section-12_4_1_c"), `http://localhost:8080/${SECTION_12}#section-12_4_1_c`);
   assert.equal(
     ruleLink(`https://ofdia-uk.github.io/dvs-trust-framework/${SECTION_12}#section-12_4`, "section-12_4_1_c"),
@@ -21,7 +34,7 @@ test("the link is the page being read, at the rule's own anchor, wherever the si
   assert.equal(ruleLink(`https://example.org/site/${SECTION_12}?from=email`, "section-12_4_1_c"), `https://example.org/site/${SECTION_12}#section-12_4_1_c`);
 });
 
-test("the reference is the rule's number", () => {
+test("the reference is the rule's current number, not its permanent identity", () => {
   assert.equal(ruleReference("12.4.1.c"), "Rule 12.4.1.c");
   assert.equal(ruleReference("4.1.b"), "Rule 4.1.b");
 });

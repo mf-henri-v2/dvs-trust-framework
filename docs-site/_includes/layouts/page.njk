@@ -78,6 +78,42 @@
 
       {{ content | safe }}
 
+      {#
+        Rule numbers in this section that no rule has now, because the rule was
+        renumbered, moved or retired. Each keeps its old anchor
+        (#section-12_4_1_e), so an older link to it lands here and says where
+        the rule is now. A number that a rule on this page has now is never
+        listed, so no anchor is repeated. See lib/rule-identities.js.
+      #}
+      {% set formerNumbers = ruleIdentities.formerNumbersByPage[repoPath] if isFramework else [] %}
+      {% if formerNumbers | length %}
+        {% macro formerRuleLink(holder) -%}
+          {%- if holder.status == "retired" -%}
+            <a class="govuk-link" href="{{ holder.href }}">a rule that has been removed from the working draft</a>
+          {%- else -%}
+            <a class="govuk-link" href="{{ holder.href }}">rule {{ holder.number }}</a>
+          {%- endif -%}
+        {%- endmacro %}
+        <div class="app-former-rules">
+          <h2 class="govuk-heading-m" id="former-rule-numbers">Former rule numbers</h2>
+          <p class="govuk-body">These numbers were used for rules in this section in earlier versions of the working draft. No rule has them now.</p>
+          <ul class="govuk-list">
+            {% for former in formerNumbers %}
+              <li class="app-former-rule" id="{{ former.anchor }}">
+                {%- if former.holders | length == 1 and former.holders[0].status == "retired" -%}
+                  {{ former.number }}: this rule has been removed from the working draft. <a class="govuk-link" href="{{ former.holders[0].href }}">Find out more about rule {{ former.number }}</a>.
+                {%- elif former.holders | length == 1 -%}
+                  {{ former.number }} is now {{ formerRuleLink(former.holders[0]) }}.
+                {%- else -%}
+                  {{ former.number }} has been used for more than one rule, so an older link to it cannot say which it meant:
+                  {% for holder in former.holders %}{{ formerRuleLink(holder) }}{{ ", " if not loop.last else "." }}{% endfor %}
+                {%- endif -%}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
       {% if isFramework %}
         <div class="app-page-actions">
           <h2 class="govuk-heading-m">Give feedback on this page</h2>

@@ -27,12 +27,11 @@ const unescape = (value) => value.replace(/&quot;/g, '"').replace(/&lt;/g, "<").
  */
 export function ruleGroups(html) {
   const groups = [];
-  for (const [, rule, reference, heading] of String(html).matchAll(
-    /<div class="app-rule-block" data-rule="([^"]*)" data-reference="([^"]*)" data-heading="([^"]*)">/g,
-  )) {
-    const label = unescape(heading);
+  for (const [, attributes] of String(html).matchAll(/<div class="app-rule-block"([^>]*)>/g)) {
+    const value = (name) => unescape(new RegExp(` ${name}="([^"]*)"`).exec(attributes)?.[1] ?? "");
+    const label = value("data-heading");
     if (groups.at(-1)?.heading !== label) groups.push({ heading: label, rules: [] });
-    groups.at(-1).rules.push({ rule: unescape(rule), reference: unescape(reference) });
+    groups.at(-1).rules.push({ rule: value("data-rule"), reference: value("data-reference") });
   }
   return groups;
 }
@@ -40,7 +39,9 @@ export function ruleGroups(html) {
 /**
  * A Markdown link, for the "Rule, paragraph or page" field: GitHub renders
  * the field as Markdown, so the issue shows the text as a link instead of a
- * long address. For example "[12.4.1.c](https://…/#section-12_4_1_c)".
+ * long address. For a rule, the text is its current number and the link is
+ * its permanent address, for example "[12.4.1.c](https://…/rules/r0123/)",
+ * so the link still goes to the rule if it is renumbered or moved.
  */
 export function markdownLink(text, url) {
   const label = text.replace(/[\\[\]]/g, "\\$&");
