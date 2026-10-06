@@ -90,7 +90,28 @@ test("branch names are shown as code, whatever they contain", () => {
 
 test("a pull request from another repository, or a failure on main, gets the route that works there", () => {
   const fork = checkSummary({ output: DECISION, status: 1, env: { ...ENV, HEAD_REPOSITORY: "someone/dvs-trust-framework" } });
-  assert.match(fork, /This pull request's branch is in another repository, `someone\/dvs-trust-framework`\. The workflow has to be run there/);
+  assert.match(fork, /This pull request's branch is in another repository, `someone\/dvs-trust-framework`, so the workflow has to be run there/);
+  assert.match(fork, /choose the pull request's branch, `policy\/fraud-monitoring`\./);
+  assert.match(fork, /If it is not listed, that repository does not have the workflow on its default branch yet \(sync the fork with this repository\), or Actions is turned off there/);
+  assert.match(fork, /\n\nOtherwise, a maintainer can record the decision on a branch in this repository\.\n/);
+  // Where the links go: the fork's Actions page, never this repository's workflow, which cannot run on the fork's branch.
+  const links = (summary) => [...summary.matchAll(/\]\(([^)\s]+)\)/g)].map((m) => m[1]);
+  assert.deepEqual(links(fork), [
+    "https://github.com/someone/dvs-trust-framework/actions",
+    "https://github.com/ofdia-uk/dvs-trust-framework/blob/HEAD/ARCHITECTURE.md#working-entirely-in-github",
+  ]);
+  assert.match(fork, /Open \[Actions in someone\/dvs-trust-framework\]\(https:\/\/github\.com\/someone\/dvs-trust-framework\/actions\), then \*\*Maintain rule identities\*\*, then \*\*Run workflow\*\*\./);
+  // A name that is not a repository's full name is shown as code, not linked.
+  const odd = checkSummary({ output: DECISION, status: 1, env: { ...ENV, HEAD_REPOSITORY: "someone/x)(javascript:alert(1)" } });
+  assert.ok(!links(odd).some((link) => link.includes("someone")), "no link is made from it");
+  assert.match(odd, /Open \*\*Actions\*\* in `someone\/x\)\(javascript:alert\(1\)`/);
+  // The same repository keeps its direct link to the workflow.
+  const same = checkSummary({ output: DECISION, status: 1, env: ENV });
+  assert.deepEqual(links(same), [
+    "https://github.com/ofdia-uk/dvs-trust-framework/actions/workflows/maintain-rule-identities.yml",
+    "https://github.com/ofdia-uk/dvs-trust-framework/blob/HEAD/ARCHITECTURE.md#working-entirely-in-github",
+  ]);
+  assert.doesNotMatch(same, /another repository|Otherwise, a maintainer/);
   const main = checkSummary({ output: DECISION, status: 1, env: { ...ENV, GITHUB_HEAD_REF: "", GITHUB_REF_NAME: "main", HEAD_REPOSITORY: "" } });
   assert.match(main, /This check failed on `main`, which the workflow never changes\. Record the decision on a branch, in a pull request\./);
 });

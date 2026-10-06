@@ -23,6 +23,8 @@ export const WORKFLOW_FILE = "maintain-rule-identities.yml";
 // GitHub limits a job summary to 1 MiB. The output is never that long in
 // practice, but if it were, the summary would be lost altogether.
 const MAX_OUTPUT = 200_000;
+// A repository's full name, owner/name, as GitHub allows it: safe to put in a link.
+const REPOSITORY_NAME = /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/;
 
 /** Text in a code span or block that its contents cannot end early. */
 function fence(text, { block = false } = {}) {
@@ -81,9 +83,21 @@ export function checkSummary({ output, status, env = {} }) {
   const elsewhere = env.HEAD_REPOSITORY && repository && env.HEAD_REPOSITORY !== repository;
   const onDefault = !env.GITHUB_HEAD_REF && branch && branch === env.DEFAULT_BRANCH;
   const workflow = repoUrl ? `[Maintain rule identities](${repoUrl}/actions/workflows/${WORKFLOW_FILE})` : "**Maintain rule identities**";
+  let openWorkflow = `Go to **Actions**, then ${workflow}, then **Run workflow**.`;
   let chooseBranch = `Under **Use workflow from**, choose this pull request's branch${branch ? `, ${fence(branch)}` : ""}.`;
+  let fallback = [];
   if (elsewhere) {
-    chooseBranch = `This pull request's branch is in another repository, ${fence(env.HEAD_REPOSITORY)}. The workflow has to be run there, on that branch, by someone who can change it. Otherwise, a maintainer can record the decision on a branch in this repository.`;
+    // The workflow runs in the repository that holds the branch. That fork may
+    // not have the workflow yet, or may have Actions turned off, so link to its
+    // Actions page, which always exists, never to this repository's workflow.
+    const head = env.HEAD_REPOSITORY;
+    const actions = REPOSITORY_NAME.test(head) ? `[Actions in ${head}](${server}/${head}/actions)` : `**Actions** in ${fence(head)}`;
+    openWorkflow =
+      `This pull request's branch is in another repository, ${fence(head)}, so the workflow has to be run there, by someone who can change that repository. ` +
+      `Open ${actions}, then **Maintain rule identities**, then **Run workflow**. ` +
+      "If it is not listed, that repository does not have the workflow on its default branch yet (sync the fork with this repository), or Actions is turned off there (its Actions page offers to turn it on).";
+    chooseBranch = `Under **Use workflow from**, choose the pull request's branch${branch ? `, ${fence(branch)}` : ""}.`;
+    fallback = ["", "Otherwise, a maintainer can record the decision on a branch in this repository."];
   } else if (onDefault) {
     chooseBranch = `This check failed on ${fence(branch)}, which the workflow never changes. Record the decision on a branch, in a pull request.`;
   }
@@ -95,10 +109,11 @@ export function checkSummary({ output, status, env = {} }) {
     "",
     "### Working in GitHub",
     "",
-    `1. Go to **Actions**, then ${workflow}, then **Run workflow**.`,
+    `1. ${openWorkflow}`,
     `2. ${chooseBranch}`,
     "3. Choose the operation, and type the identities or numbers, that the output below describes. The table shows which operation each command is.",
     "4. Run it. The workflow commits the decision to the branch and runs the checks again.",
+    ...fallback,
     "",
     operationTable(),
     "",
