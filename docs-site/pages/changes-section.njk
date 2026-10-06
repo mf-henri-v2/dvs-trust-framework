@@ -34,7 +34,9 @@ eleventyComputed:
       {% for item in section.items %}
         <div class="app-change">
           <h2 class="govuk-heading-s app-change__title">
-            {% if item.anchor and section.url %}<a class="govuk-link" href="{{ section.url }}#{{ item.anchor }}">{{ item.label }}</a>{% else %}{{ item.label }}{% endif %}
+            {#- A removed rule links to its permanent page, which says what happened to it, if exactly one rule had its number and none has it now. -#}
+            {% set formerHref = item.rule | formerRuleHref(ruleIdentities) if item.kind == "removed" and item.rule else null %}
+            {% if item.anchor and section.url %}<a class="govuk-link" href="{{ section.url }}#{{ item.anchor }}">{{ item.label }}</a>{% elif formerHref %}<a class="govuk-link" href="{{ formerHref }}">{{ item.label }}</a>{% else %}{{ item.label }}{% endif %}
             {% if item.kind == "added" %}<strong class="govuk-tag govuk-tag--green">Added</strong>
             {% elif item.kind == "removed" %}<strong class="govuk-tag govuk-tag--red">Removed</strong>
             {% elif item.kind == "link" %}<strong class="govuk-tag govuk-tag--purple">Link changed</strong>

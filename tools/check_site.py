@@ -11,7 +11,8 @@ For every HTML page it checks that:
 - no two elements on a page share an id;
 - every numbered rule has an anchor made from its number and a feedback
   route: it sits in a rule block whose feedback reference is the rule
-  number and a link to that anchor, and it is in the page's rule picker;
+  number and a link to the rule's permanent address, and it is in the
+  page's rule picker;
 - exactly one page (/changes/) says whether the trust framework wording has
   changed since its baseline, and what it says is consistent: "unchanged"
   lists no changed sections and no section page says it has changed;
@@ -27,10 +28,19 @@ For every HTML page it checks that:
 - no repository-only material (the caution banner markers or the
   "Repository navigation" footer) has leaked into the page.
 
+It checks every rule's permanent address (/rules/<identity>/, see
+docs-site/lib/rule-identities.js): each rule block has a permanent identity
+and an anchor made from it (#rule-r0123); no identity is on more than one
+block; each identity has a page; a current rule's page links to exactly that
+rule's block, and a retired rule's page links to no rule but to the pages of
+any rules that replace it; and the pages are exactly the identities in
+rule-identities.json, with the same status.
+
 It also checks the search index (search-index.json): every passage in it
 links to a page and anchor that exist, page addresses are relative to the
 site root (so they work under a path prefix), rule and section numbers are
-not repeated, and it holds none of the site's navigation, banners or
+not repeated, every rule has its permanent identity, every identity in it
+has a page, and it holds none of the site's navigation, banners or
 feedback controls. On the search page as built, before any script runs, the
 search results area is hidden and the other way to find a rule (the
 fallback, with links to the sections) is shown, so readers have it without
@@ -40,6 +50,8 @@ External links are not checked.
 
 Pass --path-prefix if the site was built for a sub-path, for example
 --path-prefix /dvs-trust-framework/ for a GitHub Pages project site.
+Pass --rule-identities to compare the permanent pages with a registry other
+than the repository's rule-identities.json.
 """
 
 from __future__ import annotations
@@ -47,12 +59,15 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
 EXTERNAL_SCHEMES = {"http", "https", "mailto", "tel"}
+REGISTRY = Path(__file__).resolve().parent.parent / "rule-identities.json"
+IDENTITY = re.compile(r"^r\d{4,}$")
 
 
 class Page(HTMLParser):
@@ -70,10 +85,10 @@ class Page(HTMLParser):
         self._banner_depth: int | None = None
         self.text: list[str] = []
         self.duplicate_ids: list[str] = []
-        # Rule-level feedback: (rule number, feedback reference) for each rule
-        # block, (anchor, index of its block or None) for each rule, and the
-        # values in the rule picker.
-        self.rule_blocks: list[tuple[str, str]] = []
+        # Rule-level feedback: the attributes of each rule block, (anchor,
+        # index of its block or None) for each rule, and the values in the
+        # rule picker.
+        self.rule_blocks: list[dict[str, str]] = []
         self.rules: list[tuple[str, int | None]] = []
         self.picker_options: list[str] = []
         self._open_block: int | None = None
@@ -90,6 +105,12 @@ class Page(HTMLParser):
         self.search_fallback_links = 0
         self._div_depth = 0
         self._fallback_depth: int | None = None
+        # A rule's permanent page: its identity and status, the links to the
+        # rule (data-rule-destination) and to the rules that replace it.
+        self.identity: str | None = None
+        self.identity_status: str | None = None
+        self.destinations: list[str] = []
+        self.replacements: list[str] = []
         # The site navigation: (href, aria-current) for each of its links.
         self.nav_links: list[tuple[str, str | None]] = []
         self._in_nav_list = False
@@ -119,8 +140,15 @@ class Page(HTMLParser):
             self.ids.add(a["id"])
         classes = (a.get("class") or "").split()
         if tag == "div" and "app-rule-block" in classes:
-            self.rule_blocks.append((a.get("data-rule", ""), a.get("data-reference", "")))
+            self.rule_blocks.append({key: a.get(key) or "" for key in ("data-rule", "data-reference", "data-rule-id", "id")})
             self._open_block = len(self.rule_blocks) - 1
+        if a.get("data-rule-identity"):
+            self.identity = a["data-rule-identity"]
+            self.identity_status = a.get("data-rule-status")
+        if tag == "a" and "data-rule-destination" in a:
+            self.destinations.append(a.get("href") or "")
+        if tag == "a" and a.get("data-rule-replacement"):
+            self.replacements.append(a.get("href") or "")
         if tag == "p" and "app-rule" in classes:
             self.rules.append((a.get("id", ""), self._open_block))
             self._open_block = None
@@ -208,14 +236,21 @@ def rule_problems(page: Page) -> list[str]:
         if block is None:
             problems.append(f"rule {anchor!r} has no feedback block")
             continue
-        number, reference = page.rule_blocks[block]
+        attrs = page.rule_blocks[block]
+        number, reference, identity = attrs["data-rule"], attrs["data-reference"], attrs["data-rule-id"]
         if anchor != "section-" + number.replace(".", "_"):
             problems.append(f"rule {number!r} has anchor {anchor!r}, which does not match its number")
-        if not (reference.startswith(f"[{number}](") and reference.endswith(f"#{anchor})")):
-            problems.append(f"the feedback reference for rule {number!r} does not link to #{anchor}: {reference!r}")
+        if not IDENTITY.match(identity):
+            problems.append(f"rule {number!r} has no permanent identity (data-rule-id)")
+            continue
+        if attrs["id"] != f"rule-{identity}":
+            problems.append(f"the block for rule {number!r} should have the anchor rule-{identity}, not {attrs['id']!r}")
+        target = reference.removeprefix(f"[{number}](").removesuffix(")") if reference.startswith(f"[{number}](") else ""
+        if not target or not urlsplit(target).path.endswith(f"/rules/{identity}/") or urlsplit(target).fragment:
+            problems.append(f"the feedback reference for rule {number!r} does not link to its permanent address /rules/{identity}/: {reference!r}")
     if len(page.rule_blocks) != len(page.rules):
         problems.append(f"{len(page.rule_blocks)} rule blocks but {len(page.rules)} rules")
-    if page.rule_blocks and page.picker_options != [reference for _, reference in page.rule_blocks]:
+    if page.rule_blocks and page.picker_options != [attrs["data-reference"] for attrs in page.rule_blocks]:
         problems.append("the rule picker does not list exactly the rules on the page, in order")
     return problems
 
@@ -236,6 +271,73 @@ def banner_problems(rel: str, page: Page) -> list[str]:
     if not target or not urlsplit(target).path.endswith(own) or urlsplit(target).fragment:
         return [f"the draft status banner's feedback link should fill in this page ({own}), not {references[0] if references else 'nothing'!r}"]
     return []
+
+
+def read_registry(path: Path | None) -> dict[str, str] | None:
+    """The identities in rule-identities.json and their status ("current" or "retired"), or None if not given."""
+    if path is None:
+        return None
+    entries = json.loads(path.read_text(encoding="utf-8"))["rules"]
+    return {entry["id"]: entry.get("status", "current") for entry in entries}
+
+
+def identity_problems(pages: dict[Path, Page], site: Path, prefix: str, registry: dict[str, str] | None) -> list[str]:
+    """Problems with the permanent addresses of rules (/rules/<identity>/) and where they go."""
+    problems = []
+    rel = lambda path: path.relative_to(site).as_posix()  # noqa: E731
+    blocks: dict[str, list[tuple[Path, str]]] = {}
+    for path, page in pages.items():
+        for attrs in page.rule_blocks:
+            if attrs["data-rule-id"]:
+                blocks.setdefault(attrs["data-rule-id"], []).append((path, attrs["data-rule"]))
+    for identity, places in sorted(blocks.items()):
+        if len(places) > 1:
+            problems.append(f"the permanent identity {identity} is on more than one rule: {', '.join(f'{number} ({rel(path)})' for path, number in places)}")
+    identity_pages = {page.identity: (path, page) for path, page in pages.items() if page.identity}
+    for identity, (path, page) in sorted(identity_pages.items()):
+        where = rel(path)
+        if where != f"rules/{identity}/index.html":
+            problems.append(f"{where}: the permanent page for {identity} should be rules/{identity}/index.html")
+        status = page.identity_status
+        if status == "current":
+            if len(page.destinations) != 1:
+                problems.append(f"{where}: a permanent page should have one link to its rule, found {len(page.destinations)}")
+                continue
+            target, fragment = resolve(site, path, page.destinations[0], prefix)
+            if target is None or target.resolve() not in pages:
+                problems.append(f"{where}: the link to rule {identity} does not go to a page of the site: {page.destinations[0]}")
+                continue
+            here = [attrs for attrs in pages[target.resolve()].rule_blocks if attrs["id"] == fragment]
+            if fragment != f"rule-{identity}" or not here or here[0]["data-rule-id"] != identity:
+                problems.append(f"{where}: the link to rule {identity} does not go to that rule's block: {page.destinations[0]}")
+        elif status == "retired":
+            if page.destinations:
+                problems.append(f"{where}: {identity} is retired, so its page must not link to a rule as if it were current")
+            if identity in blocks:
+                problems.append(f"{where}: {identity} is retired, but a rule on {rel(blocks[identity][0][0])} has it")
+            for href in page.replacements:
+                target, _ = resolve(site, path, href, prefix)
+                replacement = pages.get(target.resolve()) if target is not None else None
+                if replacement is None or not replacement.identity or replacement.identity == identity:
+                    problems.append(f"{where}: a replacement link does not go to another rule's permanent page: {href}")
+        else:
+            problems.append(f"{where}: unknown status {status!r} for {identity}")
+    for identity, places in sorted(blocks.items()):
+        found = identity_pages.get(identity)
+        if found is None:
+            problems.append(f"{rel(places[0][0])}: rule {places[0][1]} has the permanent identity {identity}, which has no page (rules/{identity}/)")
+        elif found[1].identity_status != "current":
+            problems.append(f"{rel(places[0][0])}: rule {places[0][1]} has the permanent identity {identity}, whose page says it is {found[1].identity_status}")
+    if registry is not None:
+        for identity, status in sorted(registry.items()):
+            found = identity_pages.get(identity)
+            if found is None:
+                problems.append(f"rule-identities.json: {identity} has no permanent page (rules/{identity}/)")
+            elif found[1].identity_status != status:
+                problems.append(f"rules/{identity}/index.html: says the rule is {found[1].identity_status}, but rule-identities.json says {status}")
+        for identity in sorted(set(identity_pages) - set(registry)):
+            problems.append(f"rules/{identity}/index.html: {identity} is not in rule-identities.json")
+    return problems
 
 
 def change_problems(pages: dict[Path, Page], site: Path) -> list[str]:
@@ -309,6 +411,14 @@ def search_problems(pages: dict[Path, Page], site: Path) -> list[str]:
             if ref in seen:
                 problems.append(f"search-index.json: {ref} is in the index more than once")
             seen.add(ref)
+        if entry.get("kind") == "rule" and not IDENTITY.match(entry.get("id", "")):
+            problems.append(f"{where}: the rule has no permanent identity")
+    identities = [entry["id"] for entry in entries if entry.get("id")]
+    identities += [item.get("id", "") for item in index.get("identities", [])]
+    identities += [identity for item in index.get("former", []) for identity in item.get("ids", [])]
+    for identity in sorted(set(identities)):
+        if (site / "rules" / identity / "index.html").resolve() not in pages:
+            problems.append(f"search-index.json: {identity} has no permanent page (rules/{identity}/)")
     problems.extend(f"search-index.json: site or repository text is in the index: {leaked!r}" for leaked in NOT_FRAMEWORK_TEXT if leaked in text)
     return problems
 
@@ -342,7 +452,7 @@ def search_page_problems(pages: dict[Path, Page], site: Path) -> list[str]:
     return problems
 
 
-def check(site: Path, prefix: str) -> list[str]:
+def check(site: Path, prefix: str, registry_path: Path | None = None) -> list[str]:
     problems: list[str] = []
     pages = {p.resolve(): parse(p) for p in site.rglob("*.html")}
     if not pages:
@@ -381,6 +491,7 @@ def check(site: Path, prefix: str) -> list[str]:
                 if fragment not in ids:
                     problems.append(f"{rel}: missing anchor: {href}")
     problems.extend(change_problems(pages, site))
+    problems.extend(identity_problems(pages, site.resolve(), prefix, read_registry(registry_path)))
     problems.extend(search_problems(pages, site.resolve()))
     problems.extend(search_page_problems(pages, site.resolve()))
     return problems
@@ -390,9 +501,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Check the built reading site.")
     parser.add_argument("site", type=Path, help="the built site directory, for example docs-site/_site")
     parser.add_argument("--path-prefix", default="/", help="URL prefix the site was built for (default: /)")
+    parser.add_argument("--rule-identities", type=Path, default=REGISTRY, help="the rule identity registry (default: rule-identities.json)")
     args = parser.parse_args()
     prefix = args.path_prefix if args.path_prefix.endswith("/") else args.path_prefix + "/"
-    problems = check(args.site, prefix)
+    problems = check(args.site, prefix, args.rule_identities)
     for problem in problems:
         if os.environ.get("GITHUB_ACTIONS") == "true":
             print(f"::error::{problem}")
@@ -402,7 +514,7 @@ def main() -> int:
     if problems:
         print(f"\n{len(problems)} problem(s) found in {pages} pages.")
         return 1
-    print(f"{pages} pages checked: links, anchors, IDs, headings, images, status banner, rule feedback, the change status, the search index, the search fallback and the navigation are all in order.")
+    print(f"{pages} pages checked: links, anchors, IDs, headings, images, status banner, rule feedback, permanent rule links, the change status, the search index, the search fallback and the navigation are all in order.")
     return 0
 
 

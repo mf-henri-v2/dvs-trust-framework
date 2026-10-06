@@ -1,0 +1,77 @@
+---
+layout: layouts/base.njk
+pagination:
+  data: ruleIdentities.list
+  size: 1
+  alias: identity
+permalink: "/rules/{{ identity.id }}/"
+eleventyExcludeFromCollections: true
+eleventyComputed:
+  title: "Rule {{ identity.number }}{% if identity.status == 'retired' %}: no longer in the working draft{% endif %}"
+---
+{#
+  The permanent address of a rule: /rules/<identity>/. It stays the same when
+  the rule is renumbered or moved. See lib/rule-identities.js.
+
+  - A rule in the working draft: says what the rule is now and where, with a
+    link to it. With JavaScript, assets/rule-forward.js goes straight there.
+  - A retired rule: says it is no longer in the working draft, and what
+    replaces it, if anything. It never goes anywhere by itself.
+
+  Everything about the rule comes from the trust framework Markdown and
+  rule-identities.json when the site is built.
+#}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+{% macro numbers(places) -%}
+  {%- for place in places | reverse -%}{{ place.number }}{{ ", " if not loop.last }}{%- endfor -%}
+{%- endmacro %}
+{{ govukBreadcrumbs({ items: [{ text: "Home", href: "/" }, { text: "Contents", href: "/trust-framework-1.0/" }], collapseOnMobile: true }) }}
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds-from-desktop" data-rule-identity="{{ identity.id }}" data-rule-status="{{ identity.status }}">
+    <span class="govuk-caption-l">Permanent link to a rule</span>
+    <h1 class="govuk-heading-xl">{{ title }}</h1>
+
+    {% if identity.status == "retired" %}
+      {% set earlier = identity.history.slice(0, -1) %}
+      <p class="govuk-body">
+        This rule has been removed from the working draft of the trust framework.
+        When it was removed it was numbered {{ identity.number }}{% if earlier | length %}, and before that {{ numbers(earlier) }}{% endif %}.
+      </p>
+      {% if identity.replacedBy | length %}
+        <h2 class="govuk-heading-m">What replaces it</h2>
+        <ul class="govuk-list govuk-list--bullet">
+          {% for other in identity.replacedBy %}
+            {% set replacement = ruleIdentities.byId[other.id] %}
+            <li>
+              <a class="govuk-link" href="{{ other.permanentUrl }}" data-rule-replacement="{{ other.id }}">Rule {{ other.number }}</a>{% if other.status == "retired" %}, which has also been removed{% else %}, in {{ replacement.pageTitle }}{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="govuk-body">No rule has been recorded as replacing it.</p>
+      {% endif %}
+      <p class="govuk-body">
+        To see how the working draft differs from the published trust framework, go to <a class="govuk-link" href="/changes/">What's changed</a>.
+        Earlier versions of the text are in the <a class="govuk-link" href="{{ repositoryUrl }}/commits/main/trust-framework-1.0">history of the trust framework on GitHub</a>.
+      </p>
+    {% else %}
+      <p class="govuk-body">
+        This rule is in <a class="govuk-link" href="{{ identity.pageUrl }}">{{ identity.pageTitle }}</a>{% if identity.heading %}, under {{ identity.heading }}{% endif %}.
+        {% if identity.history | length %}It was previously numbered {{ numbers(identity.history) }}.{% endif %}
+      </p>
+      <div class="govuk-inset-text app-rule-excerpt">{{ identity.excerpt }}</div>
+      <a class="govuk-button app-rule-destination" href="{{ identity.destination }}" data-rule-destination>Go to rule {{ identity.number }}</a>
+    {% endif %}
+
+    <h2 class="govuk-heading-m">About this link</h2>
+    <p class="govuk-body">
+      This is a permanent link. It stays the same if the rule is renumbered or moved to another section, and it goes to wherever the rule is in the working draft at the time.
+      {% if identity.status == "retired" %}Because this rule has been removed, the link comes to this page instead.{% endif %}
+    </p>
+    <p class="govuk-body">The rule's permanent identifier is {{ identity.id }}.</p>
+  </div>
+</div>
+{% if identity.status != "retired" %}
+  {# Classic, not a module, so it runs as soon as it loads. #}
+  <script src="/assets/rule-forward.js"></script>
+{% endif %}

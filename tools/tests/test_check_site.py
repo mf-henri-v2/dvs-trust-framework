@@ -143,13 +143,31 @@ class SiteChecks(unittest.TestCase):
         self.assertTrue(any("more than one element has id 'a'" in p for p in problems))
 
 
-def rule(number: str, anchor: str | None = None, reference: str | None = None) -> str:
+IDENTITIES = {"12.1.a": "r0001", "12.1.b": "r0002"}
+
+
+def rule(number: str, anchor: str | None = None, reference: str | None = None, identity: str | None = None, block_id: str | None = None) -> str:
     anchor = anchor or "section-" + number.replace(".", "_")
-    reference = reference or f"[{number}](https://example.org/page/#{anchor})"
+    identity = IDENTITIES[number] if identity is None else identity
+    reference = reference or f"[{number}](https://example.org/rules/{identity}/)"
+    block_id = f"rule-{identity}" if block_id is None else block_id
     return (
-        f'<div class="app-rule-block" data-rule="{number}" data-reference="{reference}" data-heading="12.1. Heading">'
+        f'<div class="app-rule-block" data-rule="{number}" data-reference="{reference}" data-heading="12.1. Heading" id="{block_id}" data-rule-id="{identity}">'
         f'<p id="{anchor}" class="app-rule govuk-body">{number}. Text.</p></div>'
     )
+
+
+def identity_page(site: Path, identity: str, status: str = "current", destination: str | None = None, replacements: tuple[str, ...] = ()) -> None:
+    """A rule's permanent page, as docs-site/pages/rule-identity.njk writes it."""
+    if destination is None and status == "current":
+        destination = f"/#rule-{identity}"
+    body = f'<div data-rule-identity="{identity}" data-rule-status="{status}">'
+    if destination:
+        body += f'<a href="{destination}" data-rule-destination>Go to the rule</a>'
+    body += "".join(f'<a href="/rules/{other}/" data-rule-replacement="{other}">Rule</a>' for other in replacements)
+    body += "</div>"
+    (site / "rules" / identity).mkdir(parents=True, exist_ok=True)
+    (site / "rules" / identity / "index.html").write_text(page(body), encoding="utf-8")
 
 
 def picker(*references: str) -> str:
@@ -158,11 +176,15 @@ def picker(*references: str) -> str:
 
 
 class RuleFeedbackChecks(unittest.TestCase):
-    setUp = SiteChecks.setUp
     problems = SiteChecks.problems
 
-    REF_A = "[12.1.a](https://example.org/page/#section-12_1_a)"
-    REF_B = "[12.1.b](https://example.org/page/#section-12_1_b)"
+    def setUp(self):
+        SiteChecks.setUp(self)
+        for identity in IDENTITIES.values():
+            identity_page(self.site, identity)
+
+    REF_A = "[12.1.a](https://example.org/rules/r0001/)"
+    REF_B = "[12.1.b](https://example.org/rules/r0002/)"
 
     def test_rules_with_anchors_blocks_and_picker_pass(self):
         self.assertEqual(self.problems(rule("12.1.a") + rule("12.1.b") + picker(self.REF_A, self.REF_B)), [])
@@ -175,14 +197,100 @@ class RuleFeedbackChecks(unittest.TestCase):
         problems = self.problems(rule("12.1.a", anchor="section-12_1_b") + picker(self.REF_A))
         self.assertTrue(any("does not match its number" in p for p in problems))
 
-    def test_reference_must_link_to_the_rule(self):
-        reference = "[12.1.a](https://example.org/page/#section-12_9_z)"
-        problems = self.problems(rule("12.1.a", reference=reference) + picker(reference))
-        self.assertTrue(any("does not link to #section-12_1_a" in p for p in problems))
+    def test_reference_must_link_to_the_rules_permanent_address(self):
+        for reference in ("[12.1.a](https://example.org/page/#section-12_1_a)", "[12.1.a](https://example.org/rules/r0002/)", "[12.1.a](https://example.org/rules/r0001/#x)"):
+            problems = self.problems(rule("12.1.a", reference=reference) + picker(reference))
+            self.assertTrue(any("does not link to its permanent address /rules/r0001/" in p for p in problems), reference)
 
     def test_picker_must_list_every_rule(self):
         problems = self.problems(rule("12.1.a") + rule("12.1.b") + picker(self.REF_A))
         self.assertTrue(any("rule picker does not list exactly" in p for p in problems))
+
+
+class PermanentLinkChecks(unittest.TestCase):
+    """Each rule's permanent address, /rules/<identity>/, and where it goes."""
+
+    def setUp(self):
+        SiteChecks.setUp(self)
+        for identity in IDENTITIES.values():
+            identity_page(self.site, identity)
+
+    def problems(self, body: str, registry: dict | None = None) -> list[str]:
+        (self.site / "index.html").write_text(page(body), encoding="utf-8")
+        path = None
+        if registry is not None:
+            path = self.site.parent / f"{self.site.name}-registry.json"
+            path.write_text(json.dumps({"rules": [{"id": identity, **extra} for identity, extra in registry.items()]}), encoding="utf-8")
+        return cs.check(self.site, "/", path)
+
+    RULES = rule("12.1.a") + rule("12.1.b") + picker("[12.1.a](https://example.org/rules/r0001/)", "[12.1.b](https://example.org/rules/r0002/)")
+
+    def test_current_rules_with_their_permanent_pages_pass(self):
+        self.assertEqual(self.problems(self.RULES), [])
+        self.assertEqual(self.problems(self.RULES, registry={"r0001": {}, "r0002": {}}), [])
+
+    def test_a_rule_needs_a_permanent_identity(self):
+        reference = "[12.1.a](https://example.org/rules//)"
+        problems = self.problems(rule("12.1.a", identity="", block_id="", reference=reference) + picker(reference))
+        self.assertTrue(any("rule '12.1.a' has no permanent identity" in p for p in problems))
+
+    def test_the_block_anchor_is_made_from_the_identity(self):
+        problems = self.problems(rule("12.1.a", block_id="rule-r0009") + picker("[12.1.a](https://example.org/rules/r0001/)"))
+        self.assertTrue(any("should have the anchor rule-r0001" in p for p in problems))
+
+    def test_an_identity_cannot_be_on_two_rules(self):
+        body = rule("12.1.a") + rule("12.1.b", identity="r0001") + picker("[12.1.a](https://example.org/rules/r0001/)", "[12.1.b](https://example.org/rules/r0001/)")
+        self.assertTrue(any("r0001 is on more than one rule" in p for p in self.problems(body)))
+
+    def test_every_rule_identity_needs_a_page(self):
+        (self.site / "rules" / "r0002" / "index.html").unlink()
+        self.assertTrue(any("r0002, which has no page" in p for p in self.problems(self.RULES)))
+
+    def test_a_permanent_page_must_go_to_its_own_rule(self):
+        identity_page(self.site, "r0001", destination="/#rule-r0002")
+        self.assertTrue(any("does not go to that rule's block" in p for p in self.problems(self.RULES)))
+        identity_page(self.site, "r0001", destination="/#section-12_1_a")
+        self.assertTrue(any("does not go to that rule's block" in p for p in self.problems(self.RULES)))
+        identity_page(self.site, "r0001", destination="/section/#rule-r0001")
+        self.assertTrue(any("does not go to that rule's block" in p for p in self.problems(self.RULES)))
+
+    def test_a_current_rules_page_needs_one_link_to_it(self):
+        identity_page(self.site, "r0001", destination="")
+        self.assertTrue(any("one link to its rule, found 0" in p for p in self.problems(self.RULES)))
+
+    def test_a_retired_rule_keeps_a_page_that_goes_to_no_rule(self):
+        identity_page(self.site, "r0003", status="retired", replacements=("r0001", "r0002"))
+        self.assertEqual(self.problems(self.RULES, registry={"r0001": {}, "r0002": {}, "r0003": {"status": "retired"}}), [])
+        identity_page(self.site, "r0003", status="retired", destination="/#rule-r0001")
+        self.assertTrue(any("must not link to a rule as if it were current" in p for p in self.problems(self.RULES)))
+
+    def test_a_retired_rule_cannot_be_on_the_page(self):
+        identity_page(self.site, "r0002", status="retired")
+        problems = self.problems(self.RULES)
+        self.assertTrue(any("r0002 is retired, but a rule" in p for p in problems))
+        self.assertTrue(any("whose page says it is retired" in p for p in problems))
+
+    def test_replacements_go_to_permanent_pages(self):
+        identity_page(self.site, "r0003", status="retired", replacements=("r0009",))
+        self.assertTrue(any("does not go to another rule's permanent page" in p for p in self.problems(self.RULES)))
+
+    def test_pages_match_the_registry(self):
+        problems = self.problems(self.RULES, registry={"r0001": {}, "r0002": {"status": "retired"}, "r0003": {"status": "retired"}})
+        self.assertTrue(any("r0003 has no permanent page" in p for p in problems))
+        self.assertTrue(any("rules/r0002/index.html: says the rule is current, but rule-identities.json says retired" in p for p in problems))
+        problems = self.problems(self.RULES, registry={"r0001": {}})
+        self.assertTrue(any("r0002 is not in rule-identities.json" in p for p in problems))
+
+    def test_the_search_index_has_each_rules_identity_and_each_has_a_page(self):
+        (self.site / "section" / "index.html").write_text(page('<h2 id="part-a">Part A</h2>' + rule("12.1.a", identity="r0005")), encoding="utf-8")
+        identity_page(self.site, "r0005", destination="/section/#rule-r0005")
+        entry = {"page": 0, "kind": "rule", "ref": "12.1.a", "anchor": "section-12_1_a"}
+        write_index(self.site, {"pages": INDEX["pages"], "entries": INDEX["entries"] + [entry]})
+        self.assertTrue(any("the rule has no permanent identity" in p for p in self.problems(self.RULES)))
+        write_index(self.site, {"pages": INDEX["pages"], "entries": INDEX["entries"] + [{**entry, "id": "r0005"}], "identities": [{"id": "r0077", "status": "retired", "ref": "12.1.c"}]})
+        problems = self.problems(self.RULES)
+        self.assertFalse(any("the rule has no permanent identity" in p for p in problems))
+        self.assertTrue(any("search-index.json: r0077 has no permanent page" in p for p in problems))
 
 
 class SearchIndexChecks(unittest.TestCase):

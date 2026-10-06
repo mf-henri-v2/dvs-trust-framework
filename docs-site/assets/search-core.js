@@ -40,6 +40,12 @@ export function parseReference(query) {
   return match ? match[1].toLowerCase() : null;
 }
 
+/** The permanent identifier a query asks for, such as "r0123" or "Rule R0123", or null. */
+export function parseIdentity(query) {
+  const match = /^(?:rule\s+)?(r\d{4,})$/i.exec(String(query).trim());
+  return match ? match[1].toLowerCase() : null;
+}
+
 /** "Rule 12.4.1.c", "Section 12.4" or "Paragraph 13.a", for a number. */
 export function referenceName(reference, kind) {
   if (kind === "paragraph") return `Paragraph ${reference}`;
@@ -69,8 +75,29 @@ export function createSearch(index) {
   }));
   const byReference = new Map(entries.filter((entry) => entry.ref).map((entry) => [entry.ref, entry]));
 
+  // Permanent identities: each rule's entry has its identity, and the index
+  // lists the retired ones and the numbers rules used to have.
+  const identities = new Map();
+  for (const entry of entries) if (entry.kind === "rule" && entry.id) identities.set(entry.id, { id: entry.id, status: "current", ref: entry.ref, entry });
+  for (const item of index.identities ?? []) identities.set(item.id, { ...identities.get(item.id), ...item });
+  const formerByReference = new Map((index.former ?? []).map((item) => [item.ref, item.ids]));
+
   /** The entry for a rule or section number, or undefined. */
   const lookup = (reference) => byReference.get(reference);
+
+  /**
+   * A permanent identity: { id, status, ref, entry }. ref is its current
+   * number, or its last number if it is retired. entry is its rule's entry;
+   * a retired identity has none.
+   */
+  const identity = (id) => identities.get(id);
+
+  /**
+   * The identities that used to have a rule number, not counting the rule
+   * that has it now. More than one means the number has been used for more
+   * than one rule, and search cannot say which was meant.
+   */
+  const formerHolders = (reference) => (formerByReference.get(reference) ?? []).map(identity).filter(Boolean);
 
   /**
    * The nearest section that does exist above a number that does not: for
@@ -126,7 +153,7 @@ export function createSearch(index) {
     return entries.filter((entry) => entry !== except && entry.kind !== "heading" && entry.kind !== "page" && pattern.test(entry.text ?? ""));
   };
 
-  return { pages, entries, lookup, nearest, search, mentions };
+  return { pages, entries, lookup, nearest, search, mentions, identity, formerHolders };
 }
 
 /**
@@ -139,6 +166,17 @@ export function destination(entry, pages, siteRoot) {
   const address = new URL(pages[entry.page].url, siteRoot);
   if (entry.anchor) address.hash = entry.anchor;
   return address.href;
+}
+
+/**
+ * The address of a rule by its permanent identity: its block on its page
+ * (#rule-r0123), as its permanent link goes. Used where search names a rule
+ * by what it is rather than by the number searched for, because a number
+ * anchor may have been used for another rule too. Anything else goes to its
+ * usual destination.
+ */
+export function identityDestination(entry, pages, siteRoot) {
+  return destination(entry.id ? { ...entry, anchor: `rule-${entry.id}` } : entry, pages, siteRoot);
 }
 
 /** What a result is called: "Rule 12.4.1.c", a heading, a glossary term, or the heading a passage is under. */

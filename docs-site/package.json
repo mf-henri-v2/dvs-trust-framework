@@ -12,7 +12,8 @@
     "build": "eleventy && npm run build:css",
     "build:css": "sass --no-source-map --style=compressed --load-path=node_modules --quiet-deps src/site.scss _site/assets/site.css",
     "start": "npm run build:css && eleventy --serve",
-    "test": "node --test \"test/**/*.test.js\""
+    "test": "node --test \"test/**/*.test.js\"",
+    "rules": "node scripts/rule-identities.js"
   },
   "dependencies": {
     "diff": "^8.0.4",

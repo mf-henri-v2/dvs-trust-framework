@@ -3,6 +3,10 @@
 // the browser's Back button. Each search loads the page again; nothing is
 // announced while the reader types.
 //
+// A rule can also be found by a number it used to have, which says what it
+// is now (or lists every rule that has had the number, without choosing
+// one), and by its permanent identifier, such as r0123.
+//
 // Everything is written to the page as text, never as HTML, so a query or a
 // passage can never be run as code.
 //
@@ -12,7 +16,8 @@
 // or search-core.js does not load, the reader still has the fallback. If the
 // search index cannot be loaded, the fallback comes back.
 
-import { createSearch, parseReference, referenceName, queryTerms, destination, resultTitle, resultContext, excerpt } from "./search-core.js";
+import { createSearch, parseReference, parseIdentity, referenceName, queryTerms, destination, identityDestination, resultTitle, resultContext, excerpt } from "./search-core.js";
+import { permanentRuleLink } from "./rule-links.js";
 
 const MAX_RESULTS = 100;
 // This file is in /assets/, one level below the home page, wherever the site is published.
@@ -83,8 +88,126 @@ function firstPassage(entry, search) {
   return search.entries.find((other) => other.order > entry.order && other.page === entry.page && other.text);
 }
 
+/** A rule that a number or permanent identifier leads to: a link to it, and where it is, or that it is no longer in the working draft. */
+function identityItem(holder, search) {
+  if (holder.entry) {
+    return element(
+      "li",
+      "",
+      link(identityDestination(holder.entry, search.pages, SITE_ROOT), `Rule ${holder.entry.ref}`),
+      contextElement(holder.entry, search.pages),
+    );
+  }
+  return element(
+    "li",
+    "",
+    link(permanentRuleLink(SITE_ROOT, holder.id), `Rule ${holder.ref}`),
+    element("p", "govuk-body-s app-search-result__context", "No longer in the working draft"),
+  );
+}
+
+/** The box for a rule or section found by its number or permanent identifier. `href` is where "Go to" goes. */
+function ruleBox(entry, search, name, goTo, href, ...extra) {
+  const passage = firstPassage(entry, search);
+  return element(
+    "div",
+    "app-search-exact",
+    element("h2", "govuk-heading-m app-search-exact__title", name),
+    contextElement(entry, search.pages),
+    ...extra,
+    passage?.text ? excerptElement(passage.text, [], 300) : null,
+    link(href, goTo, "govuk-button app-search-exact__button"),
+  );
+}
+
+/**
+ * A number no rule has now, but one or more rules used to. With one, say what
+ * it is now; with more, list them all. Search never picks one for the reader.
+ */
+function showFormerNumber(reference, holders, search) {
+  const name = `Rule ${reference}`;
+  if (holders.length > 1) {
+    announce(`${name} has been used for more than one rule`);
+    const list = element("ul", "govuk-list app-search-holders");
+    for (const holder of holders) list.append(identityItem(holder, search));
+    output.append(
+      element(
+        "div",
+        "govuk-inset-text app-search-missing",
+        element("h2", "govuk-heading-m", `${name} has been used for more than one rule`),
+        element(
+          "p",
+          "govuk-body",
+          `No rule is numbered ${reference} now. Earlier versions of the working draft used this number for each of these rules, so search cannot tell which one you are looking for:`,
+        ),
+        list,
+      ),
+    );
+    return;
+  }
+  const [holder] = holders;
+  if (holder.entry) {
+    const now = `rule ${holder.entry.ref}`;
+    announce(`${name} is now ${now}`);
+    output.append(
+      ruleBox(holder.entry, search, `${name} is now ${now}`, `Go to ${now}`, identityDestination(holder.entry, search.pages, SITE_ROOT), element("p", "govuk-body", `This rule was numbered ${reference} in an earlier version of the working draft.`)),
+    );
+    return;
+  }
+  announce(`${name} is no longer in the working draft`);
+  output.append(
+    element(
+      "div",
+      "govuk-inset-text app-search-missing",
+      element("h2", "govuk-heading-m", `${name} is no longer in the working draft`),
+      element("p", "govuk-body", "It has been removed from the working draft. Its permanent link says whether anything replaces it."),
+      element("p", "govuk-body", link(permanentRuleLink(SITE_ROOT, holder.id), `Find out what happened to rule ${reference}`)),
+    ),
+  );
+}
+
+/** A rule found by its permanent identifier, such as r0123. */
+function showIdentity(id, search) {
+  const holder = search.identity(id);
+  if (!holder) {
+    announce("Rule not found");
+    output.append(
+      element(
+        "div",
+        "govuk-inset-text app-search-missing",
+        element("h2", "govuk-heading-m", `There is no rule with the permanent identifier ${id}`),
+        element("p", "govuk-body", "Check it and try again, or search for the rule's number, for example 12.4.1.c."),
+      ),
+    );
+    return;
+  }
+  if (!holder.entry) {
+    announce(`Rule ${holder.ref} is no longer in the working draft`);
+    output.append(
+      element(
+        "div",
+        "govuk-inset-text app-search-missing",
+        element("h2", "govuk-heading-m", `Rule ${holder.ref} is no longer in the working draft`),
+        element("p", "govuk-body", `${id} is the permanent identifier of rule ${holder.ref}, which has been removed from the working draft. Its permanent link says whether anything replaces it.`),
+        element("p", "govuk-body", link(permanentRuleLink(SITE_ROOT, id), `Find out what happened to rule ${holder.ref}`)),
+      ),
+    );
+    return;
+  }
+  const name = `Rule ${holder.entry.ref}`;
+  announce(`${name} found`);
+  output.append(
+    ruleBox(holder.entry, search, name, `Go to rule ${holder.entry.ref}`, identityDestination(holder.entry, search.pages, SITE_ROOT), element("p", "govuk-body", `${id} is the permanent identifier of rule ${holder.entry.ref}.`)),
+  );
+}
+
 function showReference(query, reference, search) {
   const entry = search.lookup(reference);
+  const former = /[a-z]/.test(reference) ? search.formerHolders(reference) : [];
+  if (!entry && former.length) {
+    showFormerNumber(reference, former, search);
+    return;
+  }
   if (!entry) {
     const nearest = search.nearest(reference);
     const name = referenceName(reference, /[a-z]/.test(reference) ? "rule" : "section");
@@ -112,15 +235,7 @@ function showReference(query, reference, search) {
 
   const name = entry.kind === "page" || entry.kind === "heading" ? entry.title : referenceName(reference, entry.kind);
   const goTo = entry.kind === "page" ? `Go to section ${reference}` : `Go to ${referenceName(reference, entry.kind).replace(/^\w/, (c) => c.toLowerCase())}`;
-  const passage = firstPassage(entry, search);
-  const box = element(
-    "div",
-    "app-search-exact",
-    element("h2", "govuk-heading-m app-search-exact__title", name),
-    contextElement(entry, search.pages),
-    passage?.text ? excerptElement(passage.text, [], 300) : null,
-    link(destination(entry, search.pages, SITE_ROOT), goTo, "govuk-button app-search-exact__button"),
-  );
+  const box = ruleBox(entry, search, name, goTo, destination(entry, search.pages, SITE_ROOT));
   if (!entry.anchor && entry.kind === "paragraph") {
     box.insertBefore(
       element("p", "govuk-body-s", `This paragraph does not have a link of its own. The link goes to the start of the section, where it is.`),
@@ -128,6 +243,22 @@ function showReference(query, reference, search) {
     );
   }
   output.append(box);
+
+  // The number has also been used for another rule, so an older link or
+  // reference to it may mean that one. Say so, and list them.
+  if (former.length) {
+    const list = element("ul", "govuk-list app-search-holders");
+    for (const holder of former) list.append(identityItem(holder, search));
+    output.append(
+      element(
+        "div",
+        "govuk-inset-text",
+        element("h2", "govuk-heading-m", `The number ${reference} has also been used for another rule`),
+        element("p", "govuk-body", `If you are following an older link or reference to ${reference}, it may mean:`),
+        list,
+      ),
+    );
+  }
 
   // Cross-references to a rule or subsection. (A section number alone, such
   // as 12, is too common in the text to be useful.)
@@ -206,8 +337,10 @@ async function run() {
     return;
   }
   loading.remove();
+  const id = parseIdentity(query);
   const reference = parseReference(query);
-  if (reference) showReference(query, reference, search);
+  if (id) showIdentity(id, search);
+  else if (reference) showReference(query, reference, search);
   else showResults(query.trim(), search);
 }
 
