@@ -41,3 +41,22 @@ export function ruleOf(block) {
   const paragraph = block.querySelector(":scope > .app-rule");
   return { number: block.dataset.rule, id: block.dataset.ruleId ?? "", anchor: paragraph?.id ?? "" };
 }
+
+/**
+ * The "See existing feedback" link for a rule block, if maintainers have
+ * chosen existing feedback about the rule to show: { text, href }, such as
+ * "See existing feedback on 12.4.1.c (3)" and the rule's place on the
+ * existing feedback page. The block's data-feedback-href is relative to the
+ * site root, so the link is right wherever the site is published. null for a
+ * rule with none, or if the block's values are not what the build writes.
+ */
+export function existingFeedbackLink(block, siteRoot) {
+  const { rule, feedbackCount, feedbackHref } = block.dataset;
+  const count = Number(feedbackCount);
+  if (!rule || !Number.isInteger(count) || count < 1 || !feedbackHref) return null;
+  const root = new URL(siteRoot).href;
+  const href = new URL(feedbackHref, root).href;
+  // Only ever a page of this site.
+  if (!href.startsWith(root)) return null;
+  return { text: `See existing feedback on ${rule} (${count})`, href };
+}

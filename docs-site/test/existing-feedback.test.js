@@ -18,9 +18,12 @@ import {
   ExistingFeedbackError,
   FEEDBACK_FILE,
 } from "../lib/existing-feedback.js";
-import { REPOSITORY_URL } from "../lib/markdown.js";
+import { REPOSITORY_URL, markdownLibrary } from "../lib/markdown.js";
+import { existingFeedbackLink } from "../assets/rule-links.js";
+import nunjucks from "nunjucks";
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const SITE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const REPO_ROOT = path.resolve(SITE_DIR, "..");
 
 // --- The real register ----------------------------------------------------------
 
@@ -192,4 +195,85 @@ test("malformed entries fail, each with what to change", () => {
 test("a register that cannot be read stops the build", () => {
   const root = path.join(REPO_ROOT, "docs-site", "test", "no-such-folder");
   assert.throws(() => readExistingFeedback(root), (error) => error instanceof ExistingFeedbackError && error.message.includes(`${FEEDBACK_FILE} cannot be read`));
+});
+
+// --- On the site ------------------------------------------------------------------
+
+/** A made-up section rendered as the site renders it, with the identities and feedback. */
+const renderS12 = (existingFeedback, { identities, sections } = identitiesFor()) =>
+  markdownLibrary.render(sections.find((section) => section.repoPath === S12).source, { page: { inputPath: `../${S12}` }, ruleIdentities: identities, existingFeedback });
+
+const blockOf = (html, id) => new RegExp(`<div class="app-rule-block"[^>]*data-rule-id="${id}"[^>]*>`).exec(html)?.[0] ?? "";
+
+test("only a rule with listed feedback says so in its block", () => {
+  const html = renderS12(resolve([{ issue: 10, title: "One", rules: ["r0002"] }, { issue: 11, title: "Two", rules: ["r0002"] }]));
+  assert.match(blockOf(html, "r0002"), / data-feedback-count="2" data-feedback-href="existing-feedback\/#rule-r0002">$/);
+  assert.doesNotMatch(blockOf(html, "r0001"), /data-feedback/);
+  // With nothing listed, no block says anything about existing feedback.
+  assert.doesNotMatch(renderS12(resolve([])), /data-feedback/);
+  // Without the feedback (as the change comparison and search parse it), rendering is unchanged.
+  assert.doesNotMatch(renderS12(undefined), /data-feedback/);
+});
+
+test("the values in a rule block are escaped", () => {
+  const html = renderS12({ byRule: { r0001: { count: 1, href: `x" onclick="alert(1)` } } });
+  assert.match(blockOf(html, "r0001"), /data-feedback-href="x&quot; onclick=&quot;alert\(1\)"/);
+});
+
+test("the rule's link names the rule and the number of issues, and goes to its place on this site's feedback page", () => {
+  const block = { dataset: { rule: "12.4.1.c", feedbackCount: "3", feedbackHref: "existing-feedback/#rule-r0254" } };
+  assert.deepEqual(existingFeedbackLink(block, "http://localhost:8080/"), { text: "See existing feedback on 12.4.1.c (3)", href: "http://localhost:8080/existing-feedback/#rule-r0254" });
+  assert.deepEqual(existingFeedbackLink(block, new URL("https://ofdia-uk.github.io/dvs-trust-framework/")), {
+    text: "See existing feedback on 12.4.1.c (3)",
+    href: "https://ofdia-uk.github.io/dvs-trust-framework/existing-feedback/#rule-r0254",
+  });
+  // No link for a rule without feedback, or with values the build never writes.
+  for (const dataset of [
+    { rule: "12.4.1.c" },
+    { rule: "12.4.1.c", feedbackCount: "0", feedbackHref: "existing-feedback/#rule-r0254" },
+    { rule: "12.4.1.c", feedbackCount: "two", feedbackHref: "existing-feedback/#rule-r0254" },
+    { rule: "12.4.1.c", feedbackCount: "3" },
+    { rule: "12.4.1.c", feedbackCount: "3", feedbackHref: "https://example.com/" },
+    { rule: "12.4.1.c", feedbackCount: "3", feedbackHref: "//example.com/x" },
+    { rule: "12.4.1.c", feedbackCount: "3", feedbackHref: "../../elsewhere/" },
+  ]) {
+    assert.equal(existingFeedbackLink({ dataset }, "https://ofdia-uk.github.io/dvs-trust-framework/"), null, JSON.stringify(dataset));
+  }
+});
+
+const templates = new nunjucks.Environment(new nunjucks.FileSystemLoader(path.join(SITE_DIR, "_includes")), { autoescape: true, throwOnUndefined: false });
+const renderList = (existingFeedback) => templates.render("components/existing-feedback-list.njk", { existingFeedback });
+
+test("the feedback page lists each issue under its section and rule, with a link to it on GitHub", () => {
+  const html = renderList(
+    resolve([
+      { issue: 10, title: "First", rules: ["r0002", "r0001"] },
+      { issue: 20, title: "Second", rules: ["r0002"] },
+      { issue: 40, title: "Whole section", sections: [S12] },
+    ]),
+  );
+  assert.match(html, /<div class="app-existing-feedback" id="section-12-service-requirements" data-feedback-section="trust-framework-1\.0\/part-3\/12-service-requirements\.md" data-feedback-count="3">/);
+  const groups = html.split(/(?=<div (?:id="[^"]+" )?data-feedback-group=)/).slice(1);
+  assert.deepEqual(
+    groups.map((group) => [/data-feedback-rule="([^"]+)"/.exec(group)?.[1] ?? "section", [...group.matchAll(/data-feedback-issue="(\d+)"/g)].map((m) => Number(m[1]))]),
+    [["section", [40]], ["r0001", [10]], ["r0002", [10, 20]]],
+  );
+  assert.match(html, /<div id="rule-r0002" data-feedback-group="rule" data-feedback-rule="r0002">\s*<h3 class="govuk-heading-m">Rule 12\.1\.b<\/h3>/);
+  assert.match(html, /<a class="govuk-link" href="\/trust-framework-1\.0\/part-3\/12-service-requirements\/#rule-r0002">Go to rule 12\.1\.b<\/a>/);
+  assert.ok(html.includes(`<a class="govuk-link" href="${REPOSITORY_URL}/issues/20" data-feedback-issue="20">Second</a> (issue 20 on GitHub)`));
+  assert.doesNotMatch(html, /data-feedback-none/);
+});
+
+test("the feedback page says when nothing has been chosen", () => {
+  const html = renderList(resolve([]));
+  assert.match(html, /<p class="govuk-body" data-feedback-none>No existing feedback has been chosen to show here yet\.<\/p>/);
+  assert.doesNotMatch(html, /data-feedback-group/);
+});
+
+test("titles are shown as text, never as HTML", () => {
+  const title = `<script>alert("x")</script> & <b>bold</b>`;
+  assert.deepEqual(check([{ issue: 9, title, rules: ["r0001"] }]), []);
+  const html = renderList(resolve([{ issue: 9, title, rules: ["r0001"] }]));
+  assert.ok(html.includes("&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; &lt;b&gt;bold&lt;/b&gt;"));
+  assert.doesNotMatch(html, /<script|<b>/);
 });

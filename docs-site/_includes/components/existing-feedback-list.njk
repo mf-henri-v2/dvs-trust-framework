@@ -1,0 +1,41 @@
+{#
+  The existing feedback that maintainers have chosen to show
+  (lib/existing-feedback.js, from existing-feedback.json): by section in
+  reading order, then feedback about the whole section, then each rule by
+  number. An issue about several rules is listed under each. Only the title
+  a maintainer wrote and a link to the issue are shown, never the issue's
+  own text.
+
+  The id of each rule's group (rule-r0254) is where the rule's "See existing
+  feedback" link goes, and the id of each section (section-12-service-requirements)
+  is where the section's link goes. tools/check_site.py reads the data-feedback
+  attributes to check that the counts and links agree.
+#}
+{% macro issues(items) %}
+  <ul class="govuk-list govuk-list--bullet">
+    {% for item in items %}
+      <li><a class="govuk-link" href="{{ item.url }}" data-feedback-issue="{{ item.issue }}">{{ item.title }}</a> (issue {{ item.issue }} on GitHub)</li>
+    {% endfor %}
+  </ul>
+{% endmacro %}
+{% for section in existingFeedback.sections %}
+  <div class="app-existing-feedback" id="{{ section.anchor }}" data-feedback-section="{{ section.repoPath }}" data-feedback-count="{{ section.count }}">
+    <h2 class="govuk-heading-l">{{ section.title }}</h2>
+    <p class="govuk-body"><a class="govuk-link" href="{{ section.url }}">Read {{ section.title }}</a></p>
+    {% if section.items | length %}
+      <div data-feedback-group="section">
+        <h3 class="govuk-heading-m">About the whole section</h3>
+        {{ issues(section.items) }}
+      </div>
+    {% endif %}
+    {% for rule in section.rules %}
+      <div id="{{ rule.anchor }}" data-feedback-group="rule" data-feedback-rule="{{ rule.id }}">
+        <h3 class="govuk-heading-m">Rule {{ rule.number }}</h3>
+        <p class="govuk-body"><a class="govuk-link" href="{{ rule.href }}">Go to rule {{ rule.number }}</a></p>
+        {{ issues(rule.items) }}
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="govuk-body" data-feedback-none>No existing feedback has been chosen to show here yet.</p>
+{% endfor %}

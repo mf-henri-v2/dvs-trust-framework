@@ -1,0 +1,32 @@
+---
+permalink: /existing-feedback/
+layout: layouts/base.njk
+title: Existing feedback
+---
+{#
+  Feedback already raised on GitHub that maintainers have chosen to show,
+  listed by the section and rule it is about. Rules and sections with
+  feedback listed here link to it ("See existing feedback on 12.4.1.c (3)").
+  Being public on GitHub does not put an issue here: only the issues in
+  existing-feedback.json are listed. See lib/existing-feedback.js.
+#}
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds-from-desktop">
+    <h1 class="govuk-heading-xl">{{ title }}</h1>
+    <p class="govuk-body">
+      This page lists some of the feedback on the working draft that has already been raised on GitHub.
+      OfDIA has chosen to show it here so that you can find it from the rule or section it is about. Not all feedback is listed.
+    </p>
+    <p class="govuk-body">Being listed here does not mean that OfDIA agrees with the feedback, or that the trust framework will change.</p>
+    <p class="govuk-body">
+      Each link opens the feedback on GitHub, where you can read the discussion and see whether it is still open.
+      If your point has already been raised, you can add a comment there instead of raising it again. You need a free GitHub account to comment.
+    </p>
+    <p class="govuk-body">
+      To raise something new, see <a class="govuk-link" href="/feedback/">how to give feedback</a>.
+      You can also <a class="govuk-link" href="{{ repositoryUrl }}/issues">see all feedback on GitHub</a>, including feedback not listed here.
+    </p>
+
+    {% include "components/existing-feedback-list.njk" %}
+  </div>
+</div>
