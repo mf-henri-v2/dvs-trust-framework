@@ -173,7 +173,7 @@ cd docs-site
 npm ci
 npm start          # build the stylesheet, then serve the site at http://localhost:8080/ and rebuild on changes
 npm run rules      # check that every rule has its permanent identity (see ARCHITECTURE.md)
-npm run feedback   # check existing-feedback.json (see ARCHITECTURE.md)
+npm run feedback   # check existing-feedback.json; npm run feedback -- show/remove changes it (see ARCHITECTURE.md)
 npm test           # test the Markdown rendering
 npm run build      # build once into _site/
 python3 ../tools/check_site.py _site
@@ -189,7 +189,8 @@ python3 ../tools/check_site.py _site
 | `lib/feedback.js` | Feedback link addresses, and the rules listed in each page's rule picker |
 | `lib/rule-identities.js` | Each rule's permanent identity: checking `rule-identities.json` against the Markdown, and where each identity is now |
 | `lib/existing-feedback.js` | The existing feedback chosen for the site: checking `existing-feedback.json`, and which rules and sections it is about |
-| `scripts/existing-feedback.js` | `npm run feedback`: check `existing-feedback.json` |
+| `scripts/existing-feedback.js` | `npm run feedback`: check `existing-feedback.json`, and show or remove an issue |
+| `scripts/existing-feedback-action.js` | Turns the form of the "Show existing feedback" workflow into one `npm run feedback` command |
 | `scripts/rule-identities.js` | `npm run rules`: check and maintain `rule-identities.json` |
 | `scripts/rule-identities-summary.js` | When the rule identity check fails in the Reading site workflow, writes the job summary: how to record the decision in GitHub or locally, then the check's output |
 | `scripts/rule-identities-action.js` | Turns the form of the "Maintain rule identities" workflow into one `npm run rules` command, so maintainers can do the same in the browser |
