@@ -22,8 +22,11 @@ CHOOSER = "https://github.com/example/repo/issues/new/choose"
 BANNER = f'<div class="govuk-phase-banner"><p>Draft. <a href="https://www.gov.uk/">Published version</a> or <a href="{CHOOSER}">give feedback</a>.</p></div>'
 
 
+BACK_TO_TOP = '<div class="app-back-to-top"><a class="govuk-link app-back-to-top__link" href="#top"><svg aria-hidden="true"></svg>\n  Back to top\n</a></div>'
+
+
 def page(body: str, title: str = "Page") -> str:
-    return f'<!DOCTYPE html><html lang="en"><head><title>{title}</title></head><body>{BANNER}<h1>{title}</h1>{body}</body></html>'
+    return f'<!DOCTYPE html><html lang="en"><head><title>{title}</title></head><body><header id="top"></header>{BANNER}<h1>{title}</h1>{body}{BACK_TO_TOP}</body></html>'
 
 
 UNCHANGED = '<div data-framework-status="unchanged"><p>No changes.</p></div>'
@@ -121,6 +124,28 @@ class SiteChecks(unittest.TestCase):
             "index.html: the draft status banner's feedback link fills in a reference on a page that is not part of the trust framework: '[Home](https://example.org/)'",
             cs.check(self.site, "/"),
         )
+
+    def back_to_top(self, replacement: str) -> list[str]:
+        (self.site / "index.html").write_text(page("").replace(BACK_TO_TOP, replacement), encoding="utf-8")
+        return [p for p in cs.check(self.site, "/") if p.startswith("index.html:")]
+
+    def test_back_to_top_is_required(self):
+        self.assertEqual(self.back_to_top(""), ['index.html: expected one "Back to top" link (app-back-to-top__link), found 0'])
+
+    def test_back_to_top_goes_to_the_top_of_the_page(self):
+        problems = self.back_to_top(BACK_TO_TOP.replace('href="#top"', 'href="#main-content"'))
+        self.assertIn("index.html: the \"Back to top\" link should go to #top, an element on the page, not '#main-content'", problems)
+        (self.site / "index.html").write_text(page("").replace('<header id="top">', "<header>"), encoding="utf-8")
+        problems = cs.check(self.site, "/")
+        self.assertTrue(any('"Back to top" link should go to #top' in p for p in problems))
+
+    def test_back_to_top_works_without_javascript(self):
+        problems = self.back_to_top(BACK_TO_TOP.replace('href="#top"', 'href="#top" hidden'))
+        self.assertEqual(problems, ['index.html: the "Back to top" link must be shown as built, so that it works without JavaScript'])
+
+    def test_back_to_top_says_so_in_words(self):
+        problems = self.back_to_top(BACK_TO_TOP.replace("Back to top", ""))
+        self.assertEqual(problems, ["index.html: the \"Back to top\" link should say \"Back to top\", not ''"])
 
     def test_repository_material_must_not_leak(self):
         self.assertTrue(any("leaked" in p for p in self.problems("<p>Repository navigation</p>")))

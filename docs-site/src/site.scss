@@ -437,3 +437,80 @@ abbr[title] {
 .app-term:target > * {
   background-color: govuk-colour("yellow", $variant: "tint-80");
 }
+
+// "Back to top", at the end of every page (assets/back-to-top.js), on wide
+// screens only: on narrower screens, including a desktop browser zoomed in
+// that far, and in print, it is not shown.
+//
+// As built, it is an ordinary link at the end of the footer. The script fixes
+// it to the bottom right of the window, and hides it near the top of the
+// page. This space at the end of the footer is kept either way, so the page
+// does not move when the script starts, and at the end of the page the
+// floating link sits here, covering nothing of the footer.
+$app-back-to-top-offset: govuk-spacing(4);
+
+.app-back-to-top {
+  display: none;
+
+  @include govuk-media-query($from: desktop) {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 44px;
+    margin-top: govuk-spacing(4);
+  }
+
+  @media print {
+    display: none;
+  }
+}
+
+.app-back-to-top__link {
+  @include govuk-font($size: 16);
+  display: inline-flex;
+  align-items: center;
+  gap: govuk-spacing(2);
+
+  // display: inline-flex would otherwise show it while hidden.
+  &[hidden] {
+    display: none;
+  }
+}
+
+.app-back-to-top__icon {
+  flex-shrink: 0;
+}
+
+// Fixed to the window, with a solid background and a border so it stays
+// readable over the text, and at least 44 by 44 pixels. It comes last on the
+// page, so it is drawn over the text without needing a z-index.
+.app-back-to-top--floating .app-back-to-top__link {
+  position: fixed;
+  right: $app-back-to-top-offset;
+  bottom: $app-back-to-top-offset;
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  padding: govuk-spacing(2) govuk-spacing(3);
+  border: $govuk-border-width-form-element solid currentcolor;
+
+  // The GOV.UK link focus style, yellow, applies when it has focus.
+  &:not(:focus) {
+    background-color: govuk-colour("white");
+  }
+}
+
+// So that moving focus with the keyboard never leaves it hidden under the
+// floating link: the browser scrolls a focused element above it.
+@include govuk-media-query($from: desktop) {
+  :root:has(.app-back-to-top--floating) {
+    scroll-padding-bottom: 44px + $app-back-to-top-offset * 2;
+  }
+}
+
+// The header, focused by "Back to top" so that the next Tab reaches the
+// navigation. It is not a control, so, like the target of GOV.UK's skip link,
+// it has no focus outline.
+#top:focus {
+  outline: none;
+}

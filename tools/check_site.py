@@ -25,6 +25,9 @@ For every HTML page it checks that:
   page", and on any other page it fills in nothing;
 - in the site navigation, at most one link is marked as current, and a link
   to the page itself is marked aria-current="page";
+- there is one "Back to top" link, saying so in words, to an element on the
+  page with the id "top", and it is shown as built, so it works without
+  JavaScript;
 - no repository-only material (the caution banner markers or the
   "Repository navigation" footer) has leaked into the page.
 
@@ -114,6 +117,10 @@ class Page(HTMLParser):
         # The site navigation: (href, aria-current) for each of its links.
         self.nav_links: list[tuple[str, str | None]] = []
         self._in_nav_list = False
+        # "Back to top": the address, whether it is hidden as built, and the
+        # text of each link.
+        self.back_to_top: list[dict] = []
+        self._in_back_to_top = False
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -139,6 +146,9 @@ class Page(HTMLParser):
                 self.duplicate_ids.append(a["id"])
             self.ids.add(a["id"])
         classes = (a.get("class") or "").split()
+        if tag == "a" and "app-back-to-top__link" in classes:
+            self.back_to_top.append({"href": a.get("href") or "", "hidden": "hidden" in a, "text": ""})
+            self._in_back_to_top = True
         if tag == "div" and "app-rule-block" in classes:
             self.rule_blocks.append({key: a.get(key) or "" for key in ("data-rule", "data-reference", "data-rule-id", "id")})
             self._open_block = len(self.rule_blocks) - 1
@@ -188,6 +198,8 @@ class Page(HTMLParser):
             self._in_picker = False
         if tag == "ul":
             self._in_nav_list = False
+        if tag == "a":
+            self._in_back_to_top = False
         if tag == "div":
             if self._fallback_depth == self._div_depth:
                 self._fallback_depth = None
@@ -197,6 +209,8 @@ class Page(HTMLParser):
 
     def handle_data(self, data):
         self.text.append(data)
+        if self._in_back_to_top:
+            self.back_to_top[-1]["text"] += data
 
     def handle_comment(self, data):
         self.text.append(f"<!--{data}-->")
@@ -271,6 +285,22 @@ def banner_problems(rel: str, page: Page) -> list[str]:
     if not target or not urlsplit(target).path.endswith(own) or urlsplit(target).fragment:
         return [f"the draft status banner's feedback link should fill in this page ({own}), not {references[0] if references else 'nothing'!r}"]
     return []
+
+
+def back_to_top_problems(page: Page) -> list[str]:
+    """Problems with the "Back to top" link at the end of the page."""
+    if len(page.back_to_top) != 1:
+        return [f'expected one "Back to top" link (app-back-to-top__link), found {len(page.back_to_top)}']
+    link = page.back_to_top[0]
+    problems = []
+    if link["href"] != "#top" or "top" not in page.ids:
+        problems.append(f'the "Back to top" link should go to #top, an element on the page, not {link["href"]!r}')
+    if link["hidden"]:
+        problems.append('the "Back to top" link must be shown as built, so that it works without JavaScript')
+    text = " ".join(link["text"].split())
+    if text != "Back to top":
+        problems.append(f'the "Back to top" link should say "Back to top", not {text!r}')
+    return problems
 
 
 def read_registry(path: Path | None) -> dict[str, str] | None:
@@ -477,6 +507,7 @@ def check(site: Path, prefix: str, registry_path: Path | None = None) -> list[st
             problems.append(f"{rel}: more than one element has id {duplicate!r}")
         problems.extend(f"{rel}: {problem}" for problem in rule_problems(page))
         problems.extend(f"{rel}: {problem}" for problem in navigation_problems(site.resolve(), path, page, prefix))
+        problems.extend(f"{rel}: {problem}" for problem in back_to_top_problems(page))
         for leaked in ("caution-banner:", "Repository navigation"):
             if leaked in text:
                 problems.append(f"{rel}: repository-only text leaked into the page: {leaked!r}")
@@ -514,7 +545,7 @@ def main() -> int:
     if problems:
         print(f"\n{len(problems)} problem(s) found in {pages} pages.")
         return 1
-    print(f"{pages} pages checked: links, anchors, IDs, headings, images, status banner, rule feedback, permanent rule links, the change status, the search index, the search fallback and the navigation are all in order.")
+    print(f"{pages} pages checked: links, anchors, IDs, headings, images, status banner, rule feedback, permanent rule links, the change status, the search index, the search fallback, the navigation and the Back to top link are all in order.")
     return 0
 
 
