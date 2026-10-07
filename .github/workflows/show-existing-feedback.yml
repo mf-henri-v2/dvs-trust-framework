@@ -1,0 +1,210 @@
+name: Show existing feedback
+
+# For maintainers who work in the browser. Chooses an issue to show on the
+# reading site, next to the rules and sections it is about, or stops showing
+# one (see ARCHITECTURE.md, under Existing feedback on the reading site).
+#
+# Fill in the form: the issue number, a short title, and the rule numbers
+# and section numbers it is about. The workflow looks up each rule's
+# permanent identity and records the issue in existing-feedback.json
+# (npm run feedback -- show/remove, from docs-site/scripts/existing-feedback.js).
+#
+# - Run from main (the default under "Use workflow from"), it commits to a
+#   new branch and opens a pull request. Nothing is shown on the site until
+#   that pull request is reviewed and merged.
+# - Run from another branch, it commits to that branch, for example to add
+#   several issues to one pull request.
+#
+# It never changes main itself. The command keeps all its safeguards: if it
+# refuses, nothing is committed. Only people with write access can run a
+# workflow manually.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Show an issue on the reading site, or stop showing it. Stopping does not change the issue on GitHub."
+        type: choice
+        required: true
+        default: show an issue (or change how it is shown)
+        options:
+          - show an issue (or change how it is shown)
+          - stop showing an issue
+      issue:
+        description: "The issue's number, such as 6."
+        type: string
+        required: true
+      title:
+        description: "A short, neutral title for readers, on one line. Leave empty to use the issue's own title. Not needed to stop showing an issue."
+        type: string
+        required: false
+      rules:
+        description: "The rule numbers it is about, separated by spaces, such as 12.4.1.c 11.2.b. Leave empty for none, or to keep the rules already recorded."
+        type: string
+        required: false
+      sections:
+        description: "The section numbers it is about as a whole, such as 12. Leave empty for none, or to keep the sections already recorded."
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+# One run at a time, so two changes to existing-feedback.json never race.
+concurrency:
+  group: show-existing-feedback
+  cancel-in-progress: false
+
+jobs:
+  refuse:
+    name: Refuse to run on a tag
+    if: github.ref_type != 'branch'
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Refuse
+        run: |
+          echo "::error::Run this workflow from a branch, such as main, not from the tag ${GITHUB_REF_NAME}."
+          exit 1
+
+  record:
+    name: Record the choice
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # to commit existing-feedback.json to a branch other than main
+      pull-requests: write # to open the pull request
+      issues: read # to look up the issue
+      actions: write # to start the checks on the new commit
+    steps:
+      # The branch chosen under "Use workflow from". The token is not kept in
+      # the checkout, so only the commit step can push.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: docs-site/.nvmrc
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+
+      # Install scripts are not needed to run the command, so none are run.
+      - name: Install dependencies
+        working-directory: docs-site
+        run: npm ci --ignore-scripts
+
+      # The form's values are passed as environment variables, never written
+      # into a command. Only an issue number, a one-line title, rule numbers
+      # and section numbers get through, as arguments to the command.
+      - name: Read the form and look up the issue
+        working-directory: docs-site
+        env:
+          ACTION: ${{ inputs.action }}
+          ISSUE: ${{ inputs.issue }}
+          TITLE: ${{ inputs.title }}
+          RULES: ${{ inputs.rules }}
+          SECTIONS: ${{ inputs.sections }}
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/existing-feedback-action.js > "$RUNNER_TEMP/feedback-arguments"
+
+      - name: Run the existing feedback command
+        id: run
+        working-directory: docs-site
+        run: |
+          mapfile -t args < "$RUNNER_TEMP/feedback-arguments"
+          printf -v shown '%q ' "${args[@]}"
+          echo "Running: npm run feedback -- ${shown}"
+          set +e
+          npm run --silent feedback -- "${args[@]}" > "$RUNNER_TEMP/feedback-output" 2>&1
+          status=$?
+          set -e
+          cat "$RUNNER_TEMP/feedback-output"
+          {
+            echo "## Show existing feedback"
+            echo
+            echo "Run from \`${GITHUB_REF_NAME}\`. Command: \`npm run feedback -- ${shown}\`."
+            echo
+            echo '````text'
+            cat "$RUNNER_TEMP/feedback-output"
+            echo '````'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "action=${args[0]}" >> "$GITHUB_OUTPUT"
+          echo "issue=${args[1]}" >> "$GITHUB_OUTPUT"
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Nothing was committed. The output above says why."
+            exit 1
+          fi
+
+      - name: Commit existing-feedback.json
+        id: commit
+        env:
+          ACTION: ${{ steps.run.outputs.action }}
+          ISSUE: ${{ steps.run.outputs.issue }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          changes="$(git status --porcelain)"
+          if [ -z "$changes" ]; then
+            echo "Nothing to change: existing-feedback.json already records this. Nothing was committed."
+            echo "**Nothing to change.** \`existing-feedback.json\` already records this, so nothing was committed." >> "$GITHUB_STEP_SUMMARY"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Only the register may change. Anything else means something is wrong.
+          if [ "$changes" != " M existing-feedback.json" ]; then
+            echo "::error::Files other than existing-feedback.json changed, so nothing was committed:"
+            echo "$changes"
+            exit 1
+          fi
+          if [ "$ACTION" = "show" ]; then message="Show issue #${ISSUE} on the reading site"; else message="Stop showing issue #${ISSUE} on the reading site"; fi
+          # From main, commit to a new branch; never to main itself.
+          branch="$GITHUB_REF_NAME"
+          if [ "$branch" = "$DEFAULT_BRANCH" ]; then
+            branch="existing-feedback/issue-${ISSUE}-run-${GITHUB_RUN_ID}"
+            git switch --create "$branch"
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add existing-feedback.json
+          git commit --message "$message" --message "Recorded with the Show existing feedback workflow, run by ${GITHUB_ACTOR}."
+          # Push to that branch only. If it has moved on since the run
+          # started, this fails rather than overwrite anything.
+          auth="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth}" push origin "HEAD:refs/heads/${branch}"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "branch=${branch}" >> "$GITHUB_OUTPUT"
+          echo "message=${message}" >> "$GITHUB_OUTPUT"
+          echo "**Committed** the updated \`existing-feedback.json\` to \`${branch}\`." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open a pull request
+        if: steps.commit.outputs.changed == 'true' && github.ref_name == github.event.repository.default_branch
+        env:
+          BRANCH: ${{ steps.commit.outputs.branch }}
+          MESSAGE: ${{ steps.commit.outputs.message }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          body="$(printf '%s\n\n%s\n\n%s' \
+            "Made with the Show existing feedback workflow, run by @${GITHUB_ACTOR}. See the run's Summary page for what it did: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            "Check the change to existing-feedback.json: the title readers will see, and the rules and sections it is shown on. Nothing is shown on the reading site until this is merged." \
+            "Listing an issue does not mean OfDIA agrees with it. See ARCHITECTURE.md, under Existing feedback on the reading site.")"
+          if url="$(gh pr create --repo "$GITHUB_REPOSITORY" --base "$DEFAULT_BRANCH" --head "$BRANCH" --title "$MESSAGE" --body "$body")"; then
+            echo "**Pull request:** ${url}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            # The repository may not allow workflows to open pull requests.
+            compare="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${DEFAULT_BRANCH}...${BRANCH}?expand=1"
+            echo "::warning::The pull request could not be opened automatically. Open it here: ${compare}"
+            echo "**Open the pull request:** ${compare} (it could not be opened automatically)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # Commits pushed by this workflow do not trigger other workflows
+      # automatically, so start the checks on the new commit explicitly.
+      - name: Run the checks on the updated branch
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          BRANCH: ${{ steps.commit.outputs.branch }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run site.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+          gh workflow run checks.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"

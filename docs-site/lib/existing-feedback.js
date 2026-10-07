@@ -151,6 +151,21 @@ export function checkExistingFeedback(register, identities, sectionPaths) {
   return problems;
 }
 
+/** An entry with its fields in the register's order. */
+export function canonicalEntry(entry) {
+  return Object.fromEntries(ENTRY_KEYS.filter((key) => entry[key] !== undefined).map((key) => [key, entry[key]]));
+}
+
+/** The register as it is written: one issue per line, so changes are easy to review. */
+export function formatExistingFeedback(register) {
+  const lines = ["{"];
+  if (register.about !== undefined) lines.push(`  "about": ${JSON.stringify(register.about)},`);
+  const entries = register.feedback.map((entry) => `    ${JSON.stringify(canonicalEntry(entry))}`);
+  lines.push(entries.length ? `  "feedback": [\n${entries.join(",\n")}\n  ]` : `  "feedback": []`);
+  lines.push("}");
+  return `${lines.join("\n")}\n`;
+}
+
 /**
  * The feedback for the site. The register must have passed
  * checkExistingFeedback. `sections` is [{ repoPath, source }] in reading order.
