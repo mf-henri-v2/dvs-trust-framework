@@ -244,10 +244,37 @@ Being public on GitHub does not put an issue on the site. Only the issues listed
 
 ### Showing an issue
 
-On a branch, edit `existing-feedback.json` (in GitHub, use the pencil icon), add an entry to `"feedback"`, and open a pull request:
+Before showing an issue, check that it is suitable to point readers to. The site shows only a short title and a link to the issue, never the issue's own text.
+
+**In GitHub, in the browser** (you need write access to the repository):
+
+1. Go to **Actions**, choose **Show existing feedback**, then **Run workflow**. Leave **Use workflow from** as `main`.
+2. Fill in the form:
+   - **action:** show an issue;
+   - **issue:** its number, such as `6`;
+   - **title:** a short, neutral title for readers, such as `What "registration" means in rule 12.4.1.c`. Leave it empty to use the issue's own title;
+   - **rules:** the rule numbers it is about, as you read them on the site, such as `12.4.1.c 11.2.b`;
+   - **sections:** the numbers of any sections it is about as a whole, such as `12`.
+3. Choose **Run workflow**. Open the run when it appears.
+
+The workflow looks up each rule's permanent identity, adds the issue to `existing-feedback.json` on a new branch and opens a pull request. Its summary says what it did. Review the pull request, in particular the title readers will see, and merge it. Nothing is shown on the site until it is merged.
+
+If anything is wrong, the run fails and commits nothing. That happens, for example, when the issue does not exist, a rule number is not in the working draft or the title is too long. The summary says why.
+
+Running it again for an issue that is already shown changes only what you fill in, such as its title or its rules. To add several issues in one pull request, run it once from `main`, then run it again choosing the new branch under **Use workflow from**: it then adds to that branch.
+
+**On your own computer:** run, in `docs-site/`:
+
+```sh
+npm run feedback -- show 6 --title "What registration means in rule 12.4.1.c" --rules 12.4.1.c --sections 12
+```
+
+Then commit `existing-feedback.json` and open a pull request.
+
+**By hand:** you can also edit `existing-feedback.json` directly. Each issue is one line:
 
 ```json
-{ "issue": 123, "title": "Clarify what fraud monitoring evidence is expected", "rules": ["r0254", "r0255"] }
+{"issue":6,"title":"What registration means in rule 12.4.1.c","rules":["r0254"],"sections":["trust-framework-1.0/part-3/12-service-requirements.md"]}
 ```
 
 | Field | Meaning |
@@ -278,7 +305,21 @@ When the check fails, nothing is published, and the live site keeps its last ver
 
 ### Removing an issue from the site
 
-Delete its entry from `existing-feedback.json`, or remove a rule or section from it, in a pull request. Once it is merged, the site no longer shows it. The issue on GitHub is not changed: it stays open or closed, with its discussion, as before.
+Run **Show existing feedback** with **stop showing an issue** and the issue number, or `npm run feedback -- remove 6`. You can also delete its line from `existing-feedback.json` by hand. Merge the pull request, and the site no longer shows it. The issue on GitHub is not changed: it stays open or closed, with its discussion, as before.
+
+To stop showing it on one rule only, run **show an issue** again for it with the rules it should still be shown on.
+
+### The workflow's safeguards
+
+The **Show existing feedback** workflow ([`.github/workflows/show-existing-feedback.yml`](.github/workflows/show-existing-feedback.yml)) is only a form in front of `npm run feedback`, and decides nothing itself.
+
+- It accepts only an issue number, a one-line title, rule numbers and section numbers, so what you type can never become anything but arguments to the command.
+- It checks that the issue exists and is not a pull request.
+- It commits only `existing-feedback.json`. If anything else changed, it fails without committing.
+- It never commits to `main`. Run from `main`, it makes a new branch and a pull request; run from another branch, it commits to that branch. It never forces a push.
+- It uses no secrets. Its permissions let it commit to a branch, open the pull request, read the issue and start the checks.
+
+If the repository does not allow workflows to open pull requests, the run gives a link to open it yourself.
 
 ## Trust framework changes and repository history
 
