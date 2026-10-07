@@ -79,6 +79,8 @@ On wide screens (GOV.UK Frontend's desktop breakpoint and up), every page has a 
 - **Placement.** The space it takes at the end of the footer is kept either way, so the page does not move when the script starts, and at the end of the page it covers nothing of the footer. When focus moves with the keyboard, the browser keeps the focused element above it (`scroll-padding-bottom`). Just above the breakpoint, the rule actions beside a rule reach the right of the window, so they can be under it while the rule is at the very bottom of the window; scrolling a little shows them.
 - **Not shown** on narrower screens, including a desktop browser zoomed in so far that the page is narrower than that breakpoint, or in print.
 
+The site check fails if a page has no "Back to top" link, if it does not say so in words, if it does not go to `#top` on the page, or if it is hidden as built.
+
 ## Rule links and references
 
 With a rule's feedback link, readers get two buttons:
@@ -147,7 +149,7 @@ The site is not part of GOV.UK. Following the GOV.UK Design System rules for ser
 
 The [Reading site workflow](../.github/workflows/site.yml) runs on every pull request and every change to `main`:
 
-- On a pull request it checks the rule identities, builds the site, tests the rendering and checks every page. The checks cover internal links, form addresses and anchors, unique IDs, heading order, image alt text, the draft banner, an anchor and feedback route for every numbered rule, a permanent link page for every rule identity that goes to the right rule, a consistent "What's changed" page, a search index whose every entry links to an anchor that exists, a search page that offers another way to find a rule until search has started, and a site navigation that marks the current page with `aria-current="page"`. Nothing is published.
+- On a pull request it checks the rule identities, builds the site, tests the rendering and checks every page. The checks cover internal links, form addresses and anchors, unique IDs, heading order, image alt text, the draft banner, an anchor and feedback route for every numbered rule, a permanent link page for every rule identity that goes to the right rule, a consistent "What's changed" page, a search index whose every entry links to an anchor that exists, a search page that offers another way to find a rule until search has started, a site navigation that marks the current page with `aria-current="page"`, and a "Back to top" link on every page that works without JavaScript. Nothing is published.
 - On `main` it does the same and then publishes the site to GitHub Pages.
 
 Publishing needs GitHub Pages enabled for the repository, with **GitHub Actions** as the source (Settings, Pages).
