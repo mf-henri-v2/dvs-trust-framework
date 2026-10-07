@@ -54,7 +54,7 @@ Choose the option that fits best:
 
 Then fill in the form and submit it. GitHub's guide to [creating an issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue) explains the steps.
 
-Please keep each issue to one point where you can. Check the [open issues](https://github.com/ofdia-uk/dvs-trust-framework/issues) first, as someone may have raised the same point. You can add a comment to their issue instead.
+Please keep each issue to one point where you can. Check the [open issues](https://github.com/ofdia-uk/dvs-trust-framework/issues) first, as someone may have raised the same point. You can add a comment to their issue instead. On the reading site, some rules and sections have a "See existing feedback" link to feedback already raised about them.
 
 Do not include personal data in an issue. Issues are public.
 
