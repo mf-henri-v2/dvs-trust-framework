@@ -10,6 +10,9 @@
 
 {% set themeColor = "#0b0c0c" %}
 
+{# The top of every page, where the "Back to top" link at the end of the page goes. #}
+{% set headerAttributes = { id: "top" } %}
+
 {% block pageTitle %}{% if title and title != site.title %}{{ title }} – {% endif %}{{ site.title }}{% endblock %}
 
 {% block headIcons %}{% endblock %}
@@ -78,10 +81,26 @@
         </div>
         <div class="govuk-footer__meta-item">© Crown copyright</div>
       </div>
+      {#
+        Back to top, on wide screens. As built, an ordinary link at the end of
+        the page. assets/back-to-top.js fixes it to the bottom right of the
+        window once the reader has scrolled down. This space is kept, so at the
+        end of the page it covers nothing of the footer.
+      #}
+      <div class="app-back-to-top">
+        <a class="govuk-link app-back-to-top__link" href="#top">
+          <svg class="app-back-to-top__icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 13 17" width="13" height="17">
+            <path fill="currentColor" d="M6.5 0 0 6.5l1.4 1.4 4.1-4.1V17h2V3.8l4.1 4.1L13 6.5z"/>
+          </svg>
+          Back to top
+        </a>
+      </div>
     </div>
   </div>
 {% endblock %}
 
 {% block bodyEnd %}
   <script type="module" src="/assets/init.js"></script>
+  {# A separate script, so it works whether or not the others do. #}
+  <script type="module" src="/assets/back-to-top.js"></script>
 {% endblock %}

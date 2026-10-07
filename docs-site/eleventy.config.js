@@ -69,6 +69,7 @@ export default function (eleventyConfig) {
 
   eleventyConfig.addPassthroughCopy({
     "../media": "media",
+    "assets/back-to-top.js": "assets/back-to-top.js",
     "assets/init.js": "assets/init.js",
     "assets/rule-actions.js": "assets/rule-actions.js",
     "assets/rule-forward.js": "assets/rule-forward.js",

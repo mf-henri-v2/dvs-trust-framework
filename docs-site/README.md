@@ -70,6 +70,15 @@ Search matches words only. It does not know synonyms, so "ID" does not find "ide
 
 Each page with three or more headings starts with an "On this page" list ([`lib/contents.js`](lib/contents.js)). It lists the page's subsections, such as 12.4, with the headings under each, such as 12.4.1, in a smaller indented list. It goes no deeper and never lists rules, so section 12, the longest, has about 30 links in 9 groups. Headings in example boxes are left out. Each link uses the heading's existing id. The list is in a `<nav>` at the top of the page, inside an "On this page" disclosure (GOV.UK Details, a native `<details>`) that is closed when the page opens, so the section's text starts straight away. It opens and closes without JavaScript, and following a link in it leaves it open. There is no sticky sidebar: the text is in one narrow column, and a disclosure at the top works the same on every screen.
 
+### Back to top
+
+On wide screens (GOV.UK Frontend's desktop breakpoint and up), every page has a "Back to top" link, with an upward arrow, that goes to the header (`#top`), where the navigation is. It is in the shared layout ([`_includes/layouts/base.njk`](_includes/layouts/base.njk)), at the end of the footer.
+
+- **With JavaScript,** [`assets/back-to-top.js`](assets/back-to-top.js) fixes it to the bottom right of the window once the reader is about one window height down the page, however they got there: scrolling, a link to a rule further down, or the browser restoring their place. Nearer the top it is hidden, so it is not in the Tab order or read out. Following it jumps straight to the top, without changing the page address or adding to the history, and moves focus to the header, so the next Tab reaches the navigation.
+- **Without JavaScript,** or if the script fails, it is an ordinary link at the end of the footer. The script fixes it to the window only once everything is ready, and the link keeps its address, so it always goes to the top.
+- **Placement.** The space it takes at the end of the footer is kept either way, so the page does not move when the script starts, and at the end of the page it covers nothing of the footer. When focus moves with the keyboard, the browser keeps the focused element above it (`scroll-padding-bottom`). Just above the breakpoint, the rule actions beside a rule reach the right of the window, so they can be under it while the rule is at the very bottom of the window; scrolling a little shows them.
+- **Not shown** on narrower screens, including a desktop browser zoomed in so far that the page is narrower than that breakpoint, or in print.
+
 ## Rule links and references
 
 With a rule's feedback link, readers get two buttons:
@@ -180,6 +189,7 @@ python3 ../tools/check_site.py _site
 | `_includes/components/search-form.njk` | The search form, used on the home page and the search page |
 | `src/site.scss` | GOV.UK Frontend settings and the site's own styles |
 | `assets/init.js` | Starts GOV.UK Frontend's JavaScript |
+| `assets/back-to-top.js` | Fixes the "Back to top" link to the window once the reader has scrolled down |
 | `assets/rule-actions.js` | Shows the feedback link and copy buttons for the rule in use, and adds copy buttons to the rule picker |
 | `assets/rule-links.js` | What "Copy link" and "Copy reference" copy |
 | `assets/rule-forward.js` | Takes a permanent link straight to the rule |
