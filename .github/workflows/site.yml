@@ -81,6 +81,15 @@ jobs:
           fi
           exit "$status"
 
+      # Only the issues listed in existing-feedback.json are shown on the
+      # site. Each must name rules by permanent identities that are still in
+      # the working draft, and section files that exist. If not, this step
+      # says what to change (see ARCHITECTURE.md, under Existing feedback on
+      # the reading site).
+      - name: Check existing feedback links
+        working-directory: docs-site
+        run: npm run --silent feedback
+
       - name: Test the Markdown rendering
         working-directory: docs-site
         run: npm test
@@ -89,7 +98,7 @@ jobs:
         working-directory: docs-site
         run: npm run build
 
-      - name: Check links, anchors, IDs, headings, rule feedback, permanent rule links, change status and the draft banner
+      - name: Check links, anchors, IDs, headings, rule feedback, permanent rule links, existing feedback links, change status and the draft banner
         run: python3 tools/check_site.py docs-site/_site --path-prefix "$PATH_PREFIX"
 
       - name: Upload the site for publishing

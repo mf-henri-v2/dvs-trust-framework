@@ -195,6 +195,12 @@ function boldRowHeaders(md) {
 // number anchor stays, for links that use it. If the rule's number has also
 // been used for another rule, the block ends with a note saying so.
 //
+// If maintainers have chosen existing feedback about the rule to show
+// (lib/existing-feedback.js, passed as `existingFeedback`), the block also
+// says how many issues (data-feedback-count) and where they are listed
+// (data-feedback-href, relative to the site root), for assets/rule-actions.js.
+// Other rules get neither.
+//
 // Anchors and blocks are made when the site is built, so new rules get them
 // automatically. A new rule's identity is recorded by a maintainer (see
 // lib/rule-identities.js). The tests fail if a paragraph looks like a rule
@@ -247,8 +253,10 @@ function rules(md) {
       const target = identity ? siteAddress(identity.permanentUrl) : siteAddress(siteUrlFor(repoPath), ruleAnchor(number));
       const reference = markdownLink(number, target);
       const permanent = identity ? ` id="${attr(identityAnchor(identity.id))}" data-rule-id="${attr(identity.id)}"` : "";
+      const feedback = identity ? state.env?.existingFeedback?.byRule?.[identity.id] : undefined;
+      const existing = feedback ? ` data-feedback-count="${attr(String(feedback.count))}" data-feedback-href="${attr(feedback.href)}"` : "";
       return html(
-        `<div class="app-rule-block" data-rule="${attr(number)}" data-reference="${attr(reference)}" data-heading="${attr(heading)}"${permanent}>\n`,
+        `<div class="app-rule-block" data-rule="${attr(number)}" data-reference="${attr(reference)}" data-heading="${attr(heading)}"${permanent}${existing}>\n`,
       );
     };
     // The other rules that have had this rule's number on this page, which an

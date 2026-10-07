@@ -15,6 +15,7 @@ import { frameworkChanges } from "./lib/changes.js";
 import { buildSearchIndex } from "./lib/search.js";
 import { pageContents, contentsLength } from "./lib/contents.js";
 import { loadRuleIdentities } from "./lib/rule-identities.js";
+import { loadExistingFeedback } from "./lib/existing-feedback.js";
 import site from "./_data/site.js";
 
 const SITE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -137,6 +138,14 @@ export default function (eleventyConfig) {
   // now. Read again for every build. If the registry and the trust framework
   // disagree, the build stops and says what to decide. See lib/rule-identities.js.
   eleventyConfig.addGlobalData("ruleIdentities", () => loadRuleIdentities(path.resolve(SITE_DIR, "..")));
+  // The existing feedback that maintainers have chosen to show, from
+  // existing-feedback.json, attached to rules by their permanent identity. If
+  // an entry is wrong or out of date, the build stops and says what to
+  // change. See lib/existing-feedback.js.
+  eleventyConfig.addGlobalData("existingFeedback", () => {
+    const root = path.resolve(SITE_DIR, "..");
+    return loadExistingFeedback(root, loadRuleIdentities(root));
+  });
   // On a "What's changed" page, where a removed rule's number leads now: the
   // permanent page of the one identity that had it, if no rule has it now.
   eleventyConfig.addFilter("formerRuleHref", (number, identities) => {

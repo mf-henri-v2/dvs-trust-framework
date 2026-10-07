@@ -32,6 +32,16 @@ Every feedback link opens the issue template chooser on GitHub, so the reader st
 - **Rule picker:** for keyboard and screen reader users, and without JavaScript, each page with rules has a "Give feedback on a specific rule" form at the bottom, with a dropdown of its rules grouped by heading. A skip link to it appears at the top of the page when it has keyboard focus. With JavaScript, "Continue to GitHub" with no rule chosen shows an error and moves focus to the dropdown instead of opening an empty form.
 - **Filtering the picker:** with JavaScript, the picker gets a "Filter the rules in this section" box. Typing a rule number, whole or in part (`12.4.1`, `Rule 12.4.1.c`), or a word from a heading (`fraud`) narrows the same dropdown to the rules that match, under their headings, and says how many match. Numbers match whole parts, so `2.1.1` does not match 2.1.10.a. It looks only at the numbers and headings already in the dropdown; it is not a search of the rules' text. Typing never chooses a rule, submits or copies anything, or moves focus, and pressing Enter in the box does nothing. Any change to the box clears the chosen rule and says so, so the buttons can never act on a rule chosen before the filter changed. "Clear filter", or emptying the box, puts every rule back in its place. Tapping a rule on the page that the filter is hiding clears the filter and chooses that rule. [`assets/rule-picker-filter.js`](assets/rule-picker-filter.js) does this, with the matching in [`assets/rule-filter.js`](assets/rule-filter.js), which the tests check. It is a separate script, so if it does not load the rule actions still work, and the other way round. The filter is added only once it is ready; if anything goes wrong later, every rule is put back in the dropdown in its original order and the filter is removed.
 
+### Existing feedback
+
+Feedback that maintainers have chosen to show, listed in [`existing-feedback.json`](../existing-feedback.json), is linked from the rules and sections it is about. Being public on GitHub is not enough. [ARCHITECTURE.md](../ARCHITECTURE.md#existing-feedback-on-the-reading-site) explains how maintainers choose and remove it. [`lib/existing-feedback.js`](lib/existing-feedback.js) checks the file against the rule identities and the trust framework, and the build stops if they disagree.
+
+- **Rule:** a rule with feedback gets `data-feedback-count` and `data-feedback-href` on its block, and its actions gain "See existing feedback on 12.4.1.c (3)" after "Give feedback on 12.4.1.c". The address is relative to the site root and is resolved by [`assets/rule-links.js`](assets/rule-links.js), so it works under a path prefix. Other rules get nothing.
+- **Section:** a section with feedback, about itself or any rule in it, gets "See existing feedback about this section (4)" in its "Give feedback on this page" list. Each issue is counted once. This link works without JavaScript.
+- **The page** (`/existing-feedback/`, [`pages/existing-feedback.njk`](pages/existing-feedback.njk)) lists the issues by section in reading order, then by rule, with each rule's group at `#rule-r0254`. It shows the maintainer's title and a link to the issue on GitHub, never the issue's text. Titles are escaped. It says that being listed does not mean OfDIA agrees.
+
+The site check fails if a count disagrees with the page, a link goes to the wrong place, something listed is not linked from its rule or section, or an issue link does not go to that issue.
+
 A link to a rule anchor highlights the whole rule in pale yellow: its first paragraph and everything that belongs to it, such as its list, table or figures, and nothing of the next rule. The highlight uses the rule's block, so it follows the same rule boundaries as feedback (`ruleBoundaries` in `lib/markdown.js`). It is done in CSS (`:has()` and `:target`), so it needs no JavaScript and follows links on the page and Back and Forward. Browsers without `:has()` highlight the first paragraph only. For example, 4.1.b includes its table (Figure 1), 4.3.c its Figures 2 and 3, and 12.9.b its Figure 4, because they belong to those rules. Every block holds exactly one rule, and the site check fails otherwise.
 
 All of this is made when the site is built. A rule is a paragraph that starts with its number, such as "12.4.1.c." or "12.4.1.c", so new rules get an anchor and feedback route automatically. A new rule also needs a permanent identity, which a maintainer records in `rule-identities.json`; until then the build says so and stops (see [Permanent rule links](#permanent-rule-links)). The Markdown is not changed. The tests fail if a paragraph looks like a numbered rule but the renderer does not recognise it, if a rule is missing its anchor or feedback route, or if an ID is repeated. The site check does the same on the built pages.
@@ -149,7 +159,7 @@ The site is not part of GOV.UK. Following the GOV.UK Design System rules for ser
 
 The [Reading site workflow](../.github/workflows/site.yml) runs on every pull request and every change to `main`:
 
-- On a pull request it checks the rule identities, builds the site, tests the rendering and checks every page. The checks cover internal links, form addresses and anchors, unique IDs, heading order, image alt text, the draft banner, an anchor and feedback route for every numbered rule, a permanent link page for every rule identity that goes to the right rule, a consistent "What's changed" page, a search index whose every entry links to an anchor that exists, a search page that offers another way to find a rule until search has started, a site navigation that marks the current page with `aria-current="page"`, and a "Back to top" link on every page that works without JavaScript. Nothing is published.
+- On a pull request it checks the rule identities, builds the site, tests the rendering and checks every page. The checks cover internal links, form addresses and anchors, unique IDs, heading order, image alt text, the draft banner, an anchor and feedback route for every numbered rule, a permanent link page for every rule identity that goes to the right rule, a consistent "What's changed" page, a search index whose every entry links to an anchor that exists, a search page that offers another way to find a rule until search has started, a site navigation that marks the current page with `aria-current="page"`, existing feedback links that go to the right place with the right count, and a "Back to top" link on every page that works without JavaScript. Nothing is published.
 - On `main` it does the same and then publishes the site to GitHub Pages.
 
 Publishing needs GitHub Pages enabled for the repository, with **GitHub Actions** as the source (Settings, Pages).
@@ -163,6 +173,7 @@ cd docs-site
 npm ci
 npm start          # build the stylesheet, then serve the site at http://localhost:8080/ and rebuild on changes
 npm run rules      # check that every rule has its permanent identity (see ARCHITECTURE.md)
+npm run feedback   # check existing-feedback.json (see ARCHITECTURE.md)
 npm test           # test the Markdown rendering
 npm run build      # build once into _site/
 python3 ../tools/check_site.py _site
@@ -177,6 +188,8 @@ python3 ../tools/check_site.py _site
 | `lib/changes.js` | What has changed in the trust framework since its baseline, for the "What's changed" pages |
 | `lib/feedback.js` | Feedback link addresses, and the rules listed in each page's rule picker |
 | `lib/rule-identities.js` | Each rule's permanent identity: checking `rule-identities.json` against the Markdown, and where each identity is now |
+| `lib/existing-feedback.js` | The existing feedback chosen for the site: checking `existing-feedback.json`, and which rules and sections it is about |
+| `scripts/existing-feedback.js` | `npm run feedback`: check `existing-feedback.json` |
 | `scripts/rule-identities.js` | `npm run rules`: check and maintain `rule-identities.json` |
 | `scripts/rule-identities-summary.js` | When the rule identity check fails in the Reading site workflow, writes the job summary: how to record the decision in GitHub or locally, then the check's output |
 | `scripts/rule-identities-action.js` | Turns the form of the "Maintain rule identities" workflow into one `npm run rules` command, so maintainers can do the same in the browser |
@@ -188,6 +201,7 @@ python3 ../tools/check_site.py _site
 | `pages/changes.njk`, `pages/changes-section.njk` | The "What's changed" page, and a page for each changed section |
 | `pages/search.njk`, `pages/search-index.njk` | The search page, and the search index it loads |
 | `pages/rule-identity.njk` | The permanent link page for each rule (`/rules/r0254/`) |
+| `pages/existing-feedback.njk`, `_includes/components/existing-feedback-list.njk` | The existing feedback page (`/existing-feedback/`), and its list |
 | `_includes/components/search-form.njk` | The search form, used on the home page and the search page |
 | `src/site.scss` | GOV.UK Frontend settings and the site's own styles |
 | `assets/init.js` | Starts GOV.UK Frontend's JavaScript |

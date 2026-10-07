@@ -39,6 +39,16 @@ rule's block, and a retired rule's page links to no rule but to the pages of
 any rules that replace it; and the pages are exactly the identities in
 rule-identities.json, with the same status.
 
+It checks the existing feedback that maintainers have chosen to show
+(docs-site/lib/existing-feedback.js): a rule block that says it has some
+links, relative to the site root, to its own place on the existing feedback
+page (existing-feedback/#rule-r0123), which lists as many issues as the
+block says; a section's "See existing feedback about this section" link
+goes to that section's place on the page and gives the same count; every
+rule and section listed on the page is linked to from the site; and every
+issue link goes to that issue on GitHub. With nothing listed, no rule or
+section links there.
+
 It also checks the search index (search-index.json): every passage in it
 links to a page and anchor that exist, page addresses are relative to the
 site root (so they work under a path prefix), rule and section numbers are
@@ -71,6 +81,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 EXTERNAL_SCHEMES = {"http", "https", "mailto", "tel"}
 REGISTRY = Path(__file__).resolve().parent.parent / "rule-identities.json"
 IDENTITY = re.compile(r"^r\d{4,}$")
+ISSUE_LINK = re.compile(r"^https://github\.com/[^/]+/[^/]+/issues/(\d+)$")
 
 
 class Page(HTMLParser):
@@ -121,6 +132,12 @@ class Page(HTMLParser):
         # text of each link.
         self.back_to_top: list[dict] = []
         self._in_back_to_top = False
+        # Existing feedback: on a section page, (href, count) for its "See
+        # existing feedback about this section" link; on the existing
+        # feedback page, each section, its groups (the whole section, or a
+        # rule) and the issues in each group.
+        self.section_feedback_links: list[tuple[str, str]] = []
+        self.feedback_sections: list[dict] = []
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -150,8 +167,16 @@ class Page(HTMLParser):
             self.back_to_top.append({"href": a.get("href") or "", "hidden": "hidden" in a, "text": ""})
             self._in_back_to_top = True
         if tag == "div" and "app-rule-block" in classes:
-            self.rule_blocks.append({key: a.get(key) or "" for key in ("data-rule", "data-reference", "data-rule-id", "id")})
+            self.rule_blocks.append({key: a.get(key) or "" for key in ("data-rule", "data-reference", "data-rule-id", "id", "data-feedback-count", "data-feedback-href")})
             self._open_block = len(self.rule_blocks) - 1
+        if tag == "a" and "data-feedback-count" in a:
+            self.section_feedback_links.append((a.get("href") or "", a["data-feedback-count"]))
+        if "data-feedback-section" in a:
+            self.feedback_sections.append({"id": a.get("id") or "", "file": a["data-feedback-section"], "count": a.get("data-feedback-count") or "", "groups": []})
+        if "data-feedback-group" in a and self.feedback_sections:
+            self.feedback_sections[-1]["groups"].append({"kind": a["data-feedback-group"], "rule": a.get("data-feedback-rule") or "", "id": a.get("id") or "", "issues": []})
+        if tag == "a" and "data-feedback-issue" in a and self.feedback_sections and self.feedback_sections[-1]["groups"]:
+            self.feedback_sections[-1]["groups"][-1]["issues"].append((a["data-feedback-issue"], a.get("href") or ""))
         if a.get("data-rule-identity"):
             self.identity = a["data-rule-identity"]
             self.identity_status = a.get("data-rule-status")
@@ -370,6 +395,73 @@ def identity_problems(pages: dict[Path, Page], site: Path, prefix: str, registry
     return problems
 
 
+def existing_feedback_problems(pages: dict[Path, Page], site: Path, prefix: str) -> list[str]:
+    """Problems with the links to existing feedback, and the page that lists it."""
+    problems: list[str] = []
+    rel = lambda path: path.relative_to(site).as_posix()  # noqa: E731
+    listing_path = (site / "existing-feedback" / "index.html").resolve()
+    listing = pages.get(listing_path)
+    where = "existing-feedback/index.html"
+    rule_groups: dict[str, dict] = {}
+    sections: dict[str, dict] = {}
+    for section in listing.feedback_sections if listing else []:
+        sections[section["id"]] = section
+        issues: set[str] = set()
+        if not section["groups"]:
+            problems.append(f"{where}: {section['file']} is listed with no feedback")
+        for group in section["groups"]:
+            label = f"rule {group['rule']}" if group["kind"] == "rule" else f"{section['file']} as a whole"
+            if not group["issues"]:
+                problems.append(f"{where}: the feedback about {label} lists no issues")
+            for number, href in group["issues"]:
+                match = ISSUE_LINK.match(href)
+                if not match or match.group(1) != number:
+                    problems.append(f"{where}: issue {number} about {label} does not link to that issue on GitHub: {href!r}")
+                issues.add(number)
+            if group["kind"] == "rule":
+                if not IDENTITY.match(group["rule"]) or group["id"] != f"rule-{group['rule']}":
+                    problems.append(f"{where}: the feedback about rule {group['rule']!r} should have the anchor rule-{group['rule']}, not {group['id']!r}")
+                rule_groups[group["rule"]] = group
+        if section["count"] != str(len(issues)):
+            problems.append(f"{where}: {section['file']} says it has {section['count']} issue(s) but lists {len(issues)}")
+    linked_rules: set[str] = set()
+    linked_sections: set[str] = set()
+    for path, page in sorted(pages.items()):
+        for attrs in page.rule_blocks:
+            href, count = attrs["data-feedback-href"], attrs["data-feedback-count"]
+            if not href and not count:
+                continue
+            number, identity = attrs["data-rule"], attrs["data-rule-id"]
+            parts = urlsplit(href)
+            target = (site / unquote(parts.path) / "index.html").resolve() if parts.path else None
+            if parts.scheme or parts.netloc or href.startswith("/") or target != listing_path or parts.fragment != f"rule-{identity}":
+                problems.append(f"{rel(path)}: the existing feedback link for rule {number!r} should be existing-feedback/#rule-{identity}, relative to the site root, not {href!r}")
+                continue
+            group = rule_groups.get(identity)
+            if group is None:
+                problems.append(f"{rel(path)}: rule {number!r} says it has existing feedback, but {where} lists none for {identity}")
+            elif count != str(len(group["issues"])):
+                problems.append(f"{rel(path)}: rule {number!r} says it has {count!r} existing feedback issue(s), but {where} lists {len(group['issues'])}")
+            linked_rules.add(identity)
+        for href, count in page.section_feedback_links:
+            target, fragment = resolve(site, path, href, prefix)
+            section = sections.get(fragment) if target is not None and target.resolve() == listing_path else None
+            if section is None:
+                problems.append(f"{rel(path)}: the existing feedback link for this section does not go to a section on {where}: {href!r}")
+                continue
+            if rel(path).removesuffix("index.html") != section["file"].removesuffix(".md") + "/":
+                problems.append(f"{rel(path)}: the existing feedback link goes to the feedback about {section['file']}, not this section")
+            elif count != section["count"]:
+                problems.append(f"{rel(path)}: the existing feedback link says {count!r} issue(s), but {where} lists {section['count']!r} for this section")
+            linked_sections.add(section["id"])
+    for identity in sorted(set(rule_groups) - linked_rules):
+        problems.append(f"{where}: lists feedback about rule {identity}, but no rule block links to it")
+    for anchor, section in sorted(sections.items()):
+        if anchor not in linked_sections:
+            problems.append(f"{where}: lists feedback about {section['file']}, but that section's page does not link to it")
+    return problems
+
+
 def change_problems(pages: dict[Path, Page], site: Path) -> list[str]:
     """Problems with what the site says about changes to the trust framework."""
     reporting = [(path, page) for path, page in pages.items() if page.framework_status]
@@ -406,6 +498,7 @@ NOT_FRAMEWORK_TEXT = (
     "Choose a rule",
     "Continue to GitHub",
     "On this page",
+    "existing feedback",
 )
 
 
@@ -523,6 +616,7 @@ def check(site: Path, prefix: str, registry_path: Path | None = None) -> list[st
                     problems.append(f"{rel}: missing anchor: {href}")
     problems.extend(change_problems(pages, site))
     problems.extend(identity_problems(pages, site.resolve(), prefix, read_registry(registry_path)))
+    problems.extend(existing_feedback_problems(pages, site.resolve(), prefix))
     problems.extend(search_problems(pages, site.resolve()))
     problems.extend(search_page_problems(pages, site.resolve()))
     return problems
@@ -545,7 +639,7 @@ def main() -> int:
     if problems:
         print(f"\n{len(problems)} problem(s) found in {pages} pages.")
         return 1
-    print(f"{pages} pages checked: links, anchors, IDs, headings, images, status banner, rule feedback, permanent rule links, the change status, the search index, the search fallback, the navigation and the Back to top link are all in order.")
+    print(f"{pages} pages checked: links, anchors, IDs, headings, images, status banner, rule feedback, permanent rule links, existing feedback links, the change status, the search index, the search fallback, the navigation and the Back to top link are all in order.")
     return 0
 
 

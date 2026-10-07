@@ -39,6 +39,7 @@ If you cannot tell whether a change alters meaning, treat it as a policy change.
 | `docs-site/` | Source for the [reading site](https://ofdia-uk.github.io/dvs-trust-framework/), built from the Markdown and published from `main` |
 | `framework-baseline.json` | The tag the reading site's "What's changed" page compares the trust framework with. See [The framework baseline](VERSIONS.md#the-framework-baseline). |
 | `rule-identities.json` | The permanent identity of every rule, for permanent rule links. See [Rule identities](#rule-identities). |
+| `existing-feedback.json` | The issues maintainers have chosen to show on the reading site, next to the rules and sections they are about. See [Existing feedback on the reading site](#existing-feedback-on-the-reading-site). |
 
 ## How the text is structured
 
@@ -91,7 +92,7 @@ The **Reading site** workflow also runs on every pull request and every change t
 
 | Check | Confirms | Does not confirm |
 | --- | --- | --- |
-| Build and check the site | Every rule has exactly one permanent identity in `rule-identities.json`, and the registry agrees with the Markdown. The site builds and its tests pass. Every page has working internal links and anchors, unique IDs, ordered headings, image alt text and the draft banner. Every numbered rule has an anchor and a feedback route, and every permanent rule link goes to its rule or, for a retired rule, to a page that says so. The "What's changed" page reports a consistent status. Every passage in the search index links to an anchor that exists, the search page offers another way to find a rule until search has started, and the site navigation marks the current page | That the site is published, or anything about the policy content |
+| Build and check the site | Every rule has exactly one permanent identity in `rule-identities.json`, and the registry agrees with the Markdown. Every entry in `existing-feedback.json` is valid and names rules and sections in the working draft. The site builds and its tests pass. Every page has working internal links and anchors, unique IDs, ordered headings, image alt text and the draft banner. Every numbered rule has an anchor and a feedback route, and every permanent rule link goes to its rule or, for a retired rule, to a page that says so. Links to existing feedback go to the right place and give the right count. The "What's changed" page reports a consistent status. Every passage in the search index links to an anchor that exists, the search page offers another way to find a rule until search has started, and the site navigation marks the current page | That the site is published, or anything about the policy content |
 
 On a pull request, GitHub runs the workflows and tools as changed by that pull request. A passing check therefore does not show that the checks themselves were left intact. Review changes to `.github/` and `tools/` with that in mind.
 
@@ -99,11 +100,12 @@ On a pull request, GitHub runs the workflows and tools as changed by that pull r
 
 The [reading site](https://ofdia-uk.github.io/dvs-trust-framework/) shows the working draft to people who would rather not use GitHub. It renders the Markdown files directly and keeps no copy of the text. Changes to `main` are published automatically. Pull requests are built and checked but never published. The site is not part of GOV.UK, so it uses the GOV.UK Design System's Generic header and none of the GOV.UK branding. [`docs-site/README.md`](docs-site/README.md) explains how it works and how to run it.
 
-Besides the text itself, the site generates three things when it is built:
+Besides the text itself, the site generates four things when it is built:
 
 - **Rule-level feedback, links and references.** Readers can give feedback on a specific rule by pointing to or tapping it, or with the rule picker at the bottom of the page, which can be filtered by rule number or heading. Either way, an issue form opens with the rule number and a link to the rule filled in. The page-level "Give feedback on GitHub" link remains the general route, and the "Draft" banner at the top of every page offers the same route ("give feedback on this draft") without scrolling. The same places offer "Copy link", which copies the rule's permanent link, and "Copy reference" (for example `Rule 12.4.1.c`). A link to a rule highlights the whole rule. See [Rule identities](#rule-identities).
 - **Search (`/search/`).** Readers can search for words, or type a rule or section number such as 12.4.1.c to go straight to it. The search index is made from the trust framework Markdown, so it never needs updating by hand. Search needs JavaScript; if it cannot run, the page explains how to find a rule and links to every section.
 - **"What's changed" (`/changes/`).** The page compares the working draft with the configured baseline and shows any changes to the trust framework content. See [Trust framework changes and repository history](#trust-framework-changes-and-repository-history).
+- **Existing feedback (`/existing-feedback/`).** Issues that maintainers have chosen to show, listed by section and rule, with links from those rules and sections. See [Existing feedback on the reading site](#existing-feedback-on-the-reading-site).
 
 ## Rule identities
 
@@ -233,6 +235,50 @@ A number link cannot say which rule it meant if the number has been used for mor
 - search lists every rule that has had the number.
 
 A permanent link never has this problem, which is why "Copy link" uses it. The note is shown only to readers who arrive through the number anchor. If a whole section file is renamed or removed, links to its old page address stop working. Recording the move keeps the rule's permanent link working, but not the old page address.
+
+## Existing feedback on the reading site
+
+Readers can see feedback that has already been raised about a rule or section, so they can add to it rather than raise it again. A rule with feedback shows "See existing feedback on 12.4.1.c (3)" next to "Give feedback on 12.4.1.c", and its section shows "See existing feedback about this section (4)" at the bottom. Both go to the [existing feedback page](https://ofdia-uk.github.io/dvs-trust-framework/existing-feedback/), which lists each issue by its title, with a link to it on GitHub. Rules and sections with none show nothing.
+
+Being public on GitHub does not put an issue on the site. Only the issues listed in [`existing-feedback.json`](existing-feedback.json) are shown, and that file changes only through a reviewed pull request. Listing an issue means it is useful for readers to find. It does not mean that OfDIA agrees with it, and the site says so.
+
+### Showing an issue
+
+On a branch, edit `existing-feedback.json` (in GitHub, use the pencil icon), add an entry to `"feedback"`, and open a pull request:
+
+```json
+{ "issue": 123, "title": "Clarify what fraud monitoring evidence is expected", "rules": ["r0254", "r0255"] }
+```
+
+| Field | Meaning |
+| --- | --- |
+| `issue` | The issue's number on GitHub. List each issue once. |
+| `title` | A short, neutral title for readers, written by a maintainer, on one line and at most 150 characters. The site shows only this and a link to the issue, never the issue's own text, so check that the issue is suitable to point readers to. |
+| `rules` | The permanent identities of the rules it is about, such as `r0254`, not their numbers. "Copy link" on a rule gives its permanent link, `/rules/r0254/`, which contains the identity. |
+| `sections` | Section files it is about as a whole, such as `trust-framework-1.0/part-3/12-service-requirements.md`. |
+
+An entry needs `rules`, `sections` or both. An issue about several rules is shown on each one.
+
+### When rules move, are renumbered or are removed
+
+Entries name rules by their permanent identity, so when a rule is renumbered or moved to another section, and that is recorded in `rule-identities.json`, its feedback goes with it and `existing-feedback.json` does not change. When a rule is removed (retired), the check fails and names any rules that replace it. In the same pull request, either list the replacements instead, or remove the identity from the entry. If a section file is renamed or removed, update or remove it in `sections` in the same way.
+
+### Checks
+
+The Reading site workflow runs `npm run feedback` (in `docs-site/`), and the build runs the same check. It fails, saying what to change, if `existing-feedback.json`:
+
+- cannot be read, or has unexpected fields;
+- lists an issue twice;
+- has a title that is missing, on more than one line or too long;
+- gives a rule number instead of an identity (it names the identity to use);
+- names an identity that does not exist, or a rule that has been removed;
+- names a section file that does not exist.
+
+When the check fails, nothing is published, and the live site keeps its last version. The site check also confirms that each count matches the existing feedback page and that every link goes where it should.
+
+### Removing an issue from the site
+
+Delete its entry from `existing-feedback.json`, or remove a rule or section from it, in a pull request. Once it is merged, the site no longer shows it. The issue on GitHub is not changed: it stays open or closed, with its discussion, as before.
 
 ## Trust framework changes and repository history
 

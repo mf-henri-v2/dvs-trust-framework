@@ -1,6 +1,9 @@
 // Rule actions: for one rule at a time, a "Give feedback on 12.4.1.c" link
 // and buttons to copy a link to the rule (its permanent address, such as
-// /rules/r0123/) and its reference ("Rule 12.4.1.c").
+// /rules/r0123/) and its reference ("Rule 12.4.1.c"). For a rule with
+// existing feedback that maintainers have chosen to show, there is also a
+// "See existing feedback on 12.4.1.c (3)" link, to where the existing
+// feedback page lists it. Other rules get no such link.
 //
 // - Pointer: point to a rule to highlight it and show its actions. Moving
 //   away hides them again.
@@ -23,7 +26,7 @@
 // Nothing here is needed to read the page. Without JavaScript the picker's
 // "Continue to GitHub" still works and none of these controls are shown.
 
-import { ruleCopyLink, ruleReference, ruleOf } from "./rule-links.js";
+import { ruleCopyLink, ruleReference, ruleOf, existingFeedbackLink } from "./rule-links.js";
 
 // This file is in /assets/, one level below the home page, wherever the site is published.
 const SITE_ROOT = new URL("../", import.meta.url);
@@ -152,6 +155,9 @@ if (picker && blocks.length) {
   const action = element("div", "govuk-body-s app-rule-action");
   action.dataset.copyPlace = "";
   const feedback = element("a", "govuk-link");
+  // Shown only for a rule with existing feedback chosen for the site.
+  const existing = element("a", "govuk-link");
+  const existingItem = element("li", "", existing);
   const [copyLink, copyReference] = copyButtons(() => (action.parentElement ? ruleOf(action.parentElement) : null));
   const done = element("span", "app-copy-done");
   done.setAttribute("aria-hidden", "true"); // announced by the status message instead
@@ -213,6 +219,14 @@ if (picker && blocks.length) {
       done.textContent = "";
       feedback.textContent = `Give feedback on ${number}`;
       feedback.href = `${picker.action}?reference=${encodeURIComponent(block.dataset.reference)}`;
+      const shown = existingFeedbackLink(block, SITE_ROOT);
+      if (shown) {
+        existing.textContent = shown.text;
+        existing.href = shown.href;
+        feedback.parentElement.after(existingItem);
+      } else {
+        existingItem.remove();
+      }
       nameButtons([copyLink, copyReference], `rule ${number}`);
       block.append(action);
     }
