@@ -14,6 +14,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import nunjucks from "nunjucks";
 import { frameworkChanges, FRAMEWORK_DIR } from "../lib/changes.js";
 import { frameworkRules, readSections, resolveIdentities, loadRuleIdentities } from "../lib/rule-identities.js";
 import { REPOSITORY_URL } from "../lib/markdown.js";
@@ -490,4 +491,58 @@ test("issue and pull request numbers are read from #123 or an address in this re
   assert.equal(referenceNumber(`${REPOSITORY_URL}/issues/123#issuecomment-1`, "issues"), 123);
   assert.equal(referenceNumber(`${REPOSITORY_URL}/pull/147/`, "pullRequests"), 147);
   for (const bad of ["0", "-1", "1.5", "#", "", "https://example.com/issues/1"]) assert.throws(() => referenceNumber(bad, "issues"), UsageError, bad);
+});
+
+// --- On the site ------------------------------------------------------------------
+
+const templates = new nunjucks.Environment(new nunjucks.FileSystemLoader(path.join(SITE_DIR, "_includes")), { autoescape: true, throwOnUndefined: false });
+const renderWhy = (entries, level = 3, heading = "Why this changed") =>
+  templates.renderString(`{% from "components/change-provenance.njk" import whyThisChanged %}{{ whyThisChanged(entries, level, heading) }}`, { entries, level, heading });
+const view = (id, fields) => ({ id, rationale: null, issues: [], pullRequests: [], ...fields });
+const issue = (number) => ({ number, url: `${REPOSITORY_URL}/issues/${number}` });
+const pull = (number) => ({ number, url: `${REPOSITORY_URL}/pull/${number}` });
+const text = (html) => html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+
+test("nothing is shown for a change with no entry", () => {
+  for (const entries of [[], undefined, null]) assert.equal(renderWhy(entries).trim(), "");
+});
+
+test("an entry is shown under a heading, with its explanation and links to the issues and pull requests on GitHub", () => {
+  const html = renderWhy([view("c0001", { rationale: "Makes clear the rule covers data in transit.", issues: [issue(123)], pullRequests: [pull(147)] })]);
+  assert.match(html, /<div class="app-why" data-provenance>\s*<h3 class="govuk-heading-s app-why__heading">Why this changed<\/h3>/);
+  assert.match(html, /<div class="app-why__entry" data-provenance-entry="c0001">/);
+  assert.match(html, /<p class="govuk-body-s app-why__rationale" data-provenance-rationale>Makes clear the rule covers data in transit\.<\/p>/);
+  assert.ok(html.includes(`<a class="govuk-link" href="${REPOSITORY_URL}/issues/123" data-provenance-issue="123">issue #123</a>`));
+  assert.ok(html.includes(`<a class="govuk-link" href="${REPOSITORY_URL}/pull/147" data-provenance-pull="147">pull request #147</a>`));
+  assert.equal(text(html), "Why this changed Makes clear the rule covers data in transit. Raised in issue #123 on GitHub. Reviewed and accepted in pull request #147 on GitHub.");
+});
+
+test("several issues, pull requests and entries read as sentences, and parts not given are left out", () => {
+  const html = renderWhy(
+    [view("c0001", { issues: [issue(1), issue(2), issue(3)], pullRequests: [pull(4), pull(5)] }), view("c0002", { rationale: "Only an explanation." })],
+    2,
+    "Why this section changed",
+  );
+  assert.match(html, /<h2 class="govuk-heading-s app-why__heading">Why this section changed<\/h2>/);
+  assert.equal(
+    text(html),
+    "Why this section changed Raised in issue #1, issue #2 and issue #3 on GitHub. Reviewed and accepted in pull request #4 and pull request #5 on GitHub. Only an explanation.",
+  );
+  assert.equal((html.match(/data-provenance-entry=/g) ?? []).length, 2);
+  assert.equal((html.match(/data-provenance-rationale/g) ?? []).length, 1);
+});
+
+test("explanations are shown as text, never as HTML", () => {
+  const rationale = `<script>alert("x")</script> & <b>bold</b> "quoted"`;
+  assert.deepEqual(problemsWith([entry({ rules: ["r0001"], rationale })]), []);
+  const html = renderWhy([view("c0001", { rationale })]);
+  assert.ok(html.includes("&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; &lt;b&gt;bold&lt;/b&gt; &quot;quoted&quot;"));
+  assert.doesNotMatch(html, /<script|<b>/);
+});
+
+test("the change page shows entries for the section and under each change", () => {
+  const page = fs.readFileSync(path.join(SITE_DIR, "pages", "changes-section.njk"), "utf-8");
+  assert.match(page, /\{% set why = changeProvenance\.bySection\[section\.path\] %\}/);
+  assert.match(page, /whyThisChanged\(why\.section if why else \[\], 2, "Why this section changed"\)/);
+  assert.match(page, /whyThisChanged\(why\.items\[loop\.index0\] if why else \[\], 3, "Why this changed"\)/);
 });
