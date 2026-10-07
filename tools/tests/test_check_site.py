@@ -414,5 +414,121 @@ class ChangeStatusChecks(unittest.TestCase):
         self.assertTrue(any("says 2 section(s) changed but lists 1" in p for p in problems))
 
 
+ISSUES = "https://github.com/example/repo/issues"
+
+
+def feedback_rule(number: str, count: str, href: str | None = None) -> str:
+    """A rule block that says it has existing feedback, as lib/markdown.js writes it."""
+    identity = IDENTITIES[number]
+    href = f"existing-feedback/#rule-{identity}" if href is None else href
+    return rule(number).replace(f'data-rule-id="{identity}">', f'data-rule-id="{identity}" data-feedback-count="{count}" data-feedback-href="{href}">', 1)
+
+
+def feedback_group(identity: str | None, *issues: int, anchor: str | None = None, link: str = ISSUES) -> str:
+    """A group on the existing feedback page: a rule's, or the whole section's if identity is None."""
+    items = "".join(f'<li><a href="{link}/{issue}" data-feedback-issue="{issue}">Title</a></li>' for issue in issues)
+    if identity is None:
+        return f'<div data-feedback-group="section"><h3>About the whole section</h3><ul>{items}</ul></div>'
+    anchor = f"rule-{identity}" if anchor is None else anchor
+    return f'<div id="{anchor}" data-feedback-group="rule" data-feedback-rule="{identity}"><h3>Rule</h3><ul>{items}</ul></div>'
+
+
+def feedback_section(count: int, *groups: str, file: str = "section.md", anchor: str = "section-section") -> str:
+    return f'<div id="{anchor}" data-feedback-section="{file}" data-feedback-count="{count}"><h2>Section</h2>{"".join(groups)}</div>'
+
+
+class ExistingFeedbackChecks(unittest.TestCase):
+    """Links to the existing feedback that maintainers have chosen to show, and the page that lists it."""
+
+    def setUp(self):
+        SiteChecks.setUp(self)
+        for identity in IDENTITIES.values():
+            identity_page(self.site, identity, destination=f"/section/#rule-{identity}")
+        self.listing("")
+
+    def listing(self, body: str) -> None:
+        (self.site / "existing-feedback").mkdir(exist_ok=True)
+        (self.site / "existing-feedback" / "index.html").write_text(page(body or "<p data-feedback-none>None.</p>"), encoding="utf-8")
+
+    def problems(self, rules: str, section_link: str = "", prefix: str = "/") -> list[str]:
+        references = [f"[{number}](https://example.org/rules/{identity}/)" for number, identity in IDENTITIES.items()]
+        body = '<h2 id="part-a">Part A</h2>' + rules + picker(*references) + section_link
+        (self.site / "section" / "index.html").write_text(page(body), encoding="utf-8")
+        (self.site / "index.html").write_text(page(""), encoding="utf-8")
+        return [p for p in cs.check(self.site, prefix) if "feedback" in p]
+
+    PLAIN = rule("12.1.a") + rule("12.1.b")
+
+    def section_link(self, count: str, href: str = "/existing-feedback/#section-section") -> str:
+        return f'<ul><li><a href="{href}" data-feedback-count="{count}">See existing feedback about this section ({count})</a></li></ul>'
+
+    def test_nothing_listed_passes(self):
+        self.assertEqual(self.problems(self.PLAIN), [])
+
+    def test_feedback_on_rules_and_the_section_passes(self):
+        self.listing(feedback_section(3, feedback_group(None, 40), feedback_group("r0001", 10), feedback_group("r0002", 10, 20)))
+        rules = feedback_rule("12.1.a", "1") + feedback_rule("12.1.b", "2")
+        self.assertEqual(self.problems(rules, self.section_link("3")), [])
+
+    def test_feedback_links_work_under_a_path_prefix(self):
+        self.listing(feedback_section(1, feedback_group("r0001", 10)))
+        rules = feedback_rule("12.1.a", "1") + rule("12.1.b")
+        self.assertEqual(self.problems(rules, self.section_link("1", "/prefix/existing-feedback/#section-section"), prefix="/prefix/"), [])
+
+    def test_a_rules_count_must_match_the_page(self):
+        self.listing(feedback_section(2, feedback_group("r0001", 10, 20)))
+        problems = self.problems(feedback_rule("12.1.a", "3") + rule("12.1.b"), self.section_link("2"))
+        self.assertTrue(any("says it has '3' existing feedback issue(s), but existing-feedback/index.html lists 2" in p for p in problems), problems)
+
+    def test_a_rule_must_link_to_its_own_place_relative_to_the_site_root(self):
+        self.listing(feedback_section(1, feedback_group("r0001", 10)))
+        for href in ("existing-feedback/#rule-r0002", "/existing-feedback/#rule-r0001", "https://example.org/existing-feedback/#rule-r0001", "elsewhere/#rule-r0001"):
+            problems = self.problems(feedback_rule("12.1.a", "1", href) + rule("12.1.b"), self.section_link("1"))
+            self.assertTrue(any("should be existing-feedback/#rule-r0001, relative to the site root" in p for p in problems), href)
+
+    def test_a_rule_with_feedback_needs_it_listed(self):
+        problems = self.problems(feedback_rule("12.1.a", "1") + rule("12.1.b"))
+        self.assertTrue(any("existing-feedback/index.html lists none for r0001" in p for p in problems))
+
+    def test_everything_listed_must_be_linked_from_the_site(self):
+        self.listing(feedback_section(2, feedback_group("r0001", 10), feedback_group("r0002", 20)))
+        problems = self.problems(feedback_rule("12.1.a", "1") + rule("12.1.b"))
+        self.assertTrue(any("lists feedback about rule r0002, but no rule block links to it" in p for p in problems))
+        self.assertTrue(any("lists feedback about section.md, but that section's page does not link to it" in p for p in problems))
+
+    def test_a_sections_link_must_give_the_pages_count(self):
+        self.listing(feedback_section(2, feedback_group(None, 40), feedback_group("r0001", 10)))
+        problems = self.problems(feedback_rule("12.1.a", "1") + rule("12.1.b"), self.section_link("3"))
+        self.assertTrue(any("the existing feedback link says '3' issue(s), but existing-feedback/index.html lists '2'" in p for p in problems))
+
+    def test_a_sections_count_is_each_issue_once(self):
+        self.listing(feedback_section(3, feedback_group("r0001", 10), feedback_group("r0002", 10, 20)))
+        problems = self.problems(feedback_rule("12.1.a", "1") + feedback_rule("12.1.b", "2"), self.section_link("3"))
+        self.assertTrue(any("section.md says it has 3 issue(s) but lists 2" in p for p in problems))
+
+    def test_a_sections_link_must_go_to_its_own_section(self):
+        self.listing(feedback_section(1, feedback_group(None, 40), file="other.md", anchor="section-other"))
+        problems = self.problems(self.PLAIN, self.section_link("1", "/existing-feedback/#section-other"))
+        self.assertTrue(any("goes to the feedback about other.md, not this section" in p for p in problems))
+        problems = self.problems(self.PLAIN, self.section_link("1", "/existing-feedback/#section-missing"))
+        self.assertTrue(any("does not go to a section on existing-feedback/index.html" in p for p in problems))
+
+    def test_issue_links_go_to_that_issue_on_github(self):
+        self.listing(feedback_section(1, feedback_group("r0001", 10, link="https://example.org/issues")))
+        problems = self.problems(feedback_rule("12.1.a", "1") + rule("12.1.b"), self.section_link("1"))
+        self.assertTrue(any("issue 10 about rule r0001 does not link to that issue on GitHub" in p for p in problems))
+
+    def test_a_rules_feedback_has_the_anchor_made_from_its_identity(self):
+        self.listing(feedback_section(1, feedback_group("r0001", 10, anchor="rule-r0009")))
+        problems = self.problems(feedback_rule("12.1.a", "1") + rule("12.1.b"), self.section_link("1"))
+        self.assertTrue(any("should have the anchor rule-r0001, not 'rule-r0009'" in p for p in problems))
+
+    def test_empty_groups_and_sections_fail(self):
+        self.listing(feedback_section(0, feedback_group("r0001")) + feedback_section(0, file="other.md", anchor="section-other"))
+        problems = self.problems(feedback_rule("12.1.a", "0") + rule("12.1.b"), self.section_link("0"))
+        self.assertTrue(any("the feedback about rule r0001 lists no issues" in p for p in problems))
+        self.assertTrue(any("other.md is listed with no feedback" in p for p in problems))
+
+
 if __name__ == "__main__":
     unittest.main()

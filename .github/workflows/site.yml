@@ -98,7 +98,7 @@ jobs:
         working-directory: docs-site
         run: npm run build
 
-      - name: Check links, anchors, IDs, headings, rule feedback, permanent rule links, change status and the draft banner
+      - name: Check links, anchors, IDs, headings, rule feedback, permanent rule links, existing feedback links, change status and the draft banner
         run: python3 tools/check_site.py docs-site/_site --path-prefix "$PATH_PREFIX"
 
       - name: Upload the site for publishing
